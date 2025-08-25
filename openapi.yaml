@@ -15,6 +15,8 @@ paths:
   /invoices:
     post:
       summary: Create invoice from receipt
+      security:
+        - bearerAuth: []
       description: Convert a receipt image to an invoice
       operationId: createInvoice
       requestBody:
@@ -44,6 +46,11 @@ paths:
                 $ref: "#/components/schemas/CreateInvoiceResponse"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     CreateInvoiceRequest:
       type: object
