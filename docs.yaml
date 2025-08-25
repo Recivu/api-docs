@@ -1,0 +1,302 @@
+openapi: 3.0.3
+info:
+  title: Invoice Webhook API
+  description: API for converting receipts to invoices
+  version: 1.0.0
+  contact:
+    name: Recivu
+    url: https://recivu.it
+
+servers:
+  - url: https://api.recivu.it/v1
+    description: Production server
+
+paths:
+  /invoices:
+    post:
+      summary: Create invoice from receipt
+      description: Convert a receipt image to an invoice
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceRequest"
+      responses:
+        "200":
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateInvoiceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateInvoiceResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateInvoiceResponse"
+
+components:
+  schemas:
+    CreateInvoiceRequest:
+      type: object
+      required:
+        - receipt_image
+        - receipt
+        - type
+        - employee_name
+        - company_vat
+      properties:
+        receipt_image:
+          type: string
+          description: Base64 encoded receipt image
+          example: "iVBORw0KGgoAAAANSUhEUgAA..."
+        receipt_image_filename:
+          type: string
+          description: Optional filename for the receipt image
+          example: "receipt_20240822.jpg"
+        receipt:
+          $ref: "#/components/schemas/ReceiptRequest"
+        type:
+          $ref: "#/components/schemas/TxType"
+        employee_name:
+          type: string
+          description: Name of the employee making the request
+          example: "Mario Rossi"
+        company_vat:
+          type: string
+          description: Company VAT number
+          example: "IT12345678901"
+        purchase_description:
+          $ref: "#/components/schemas/PurchaseContext"
+
+    ReceiptRequest:
+      type: object
+      required:
+        - receipt_header
+        - receipt_body
+        - receipt_footer
+      properties:
+        receipt_header:
+          $ref: "#/components/schemas/ReceiptHeader"
+        receipt_body:
+          $ref: "#/components/schemas/ReceiptBody"
+        receipt_footer:
+          $ref: "#/components/schemas/ReceiptFooter"
+
+    ReceiptHeader:
+      type: object
+      required:
+        - merchant_vat
+        - merchant_name
+      properties:
+        store_name:
+          type: string
+          description: Name of the store
+          example: "Supermarket ABC"
+        store_address:
+          type: string
+          description: Address of the store
+          example: "Via Roma 123, 00100 Roma RM"
+        store_phone:
+          type: string
+          description: Phone number of the store
+          example: "+39 06 12345678"
+        store_email:
+          type: string
+          description: Email address of the store
+          example: "info@supermarketabc.it"
+        merchant_vat:
+          type: string
+          description: Merchant VAT number
+          example: "IT98765432109"
+        merchant_name:
+          type: string
+          description: Merchant name
+          example: "Supermarket ABC S.r.l."
+
+    ReceiptBody:
+      type: object
+      required:
+        - products
+        - receipt_total
+        - receipt_vat
+      properties:
+        products:
+          type: array
+          description: List of products in the receipt
+          items:
+            $ref: "#/components/schemas/ProductRequest"
+        receipt_total:
+          type: string
+          description: Total amount of the receipt
+          example: "25.50"
+        receipt_vat:
+          type: string
+          description: Total VAT amount
+          example: "4.59"
+
+    ProductRequest:
+      type: object
+      required:
+        - product_description
+        - product_total
+        - product_vat
+      properties:
+        product_description:
+          type: string
+          description: Description of the product
+          example: "Pasta integrale 500g"
+        product_quantity:
+          type: string
+          description: Quantity of the product
+          example: "2"
+        product_total:
+          type: string
+          description: Total price for this product
+          example: "3.50"
+        product_vat:
+          type: string
+          description: VAT amount for this product
+          example: "0.77"
+        product_absolute_discount:
+          type: string
+          description: Absolute discount amount
+          example: "1.00"
+        product_percent_discount:
+          type: string
+          description: Percentage discount
+          example: "10%"
+
+    ReceiptFooter:
+      type: object
+      required:
+        - receipt_date_time
+        - receipt_number
+      properties:
+        receipt_date_time:
+          type: string
+          description: Date and time of the receipt
+          format: date-time
+          example: "2024-08-22T14:30:00Z"
+        receipt_number:
+          type: string
+          description: Receipt number
+          example: "RCP-2024-001234"
+        rt_number:
+          type: string
+          description: RT (Ricevuta Telematica) number for fiscal receipts
+          example: "RT001234567890"
+
+    PurchaseContext:
+      type: object
+      properties:
+        cost_center:
+          type: string
+          description: Cost center for the purchase
+          example: "IT Department"
+        purchase_reason:
+          type: string
+          description: Reason for the purchase
+          example: "Office supplies"
+
+    CreateInvoiceResponse:
+      type: object
+      required:
+        - transaction_id
+        - status
+      properties:
+        transaction_id:
+          type: string
+          description: Unique transaction identifier
+          example: "txn_abc123def456"
+        status:
+          type: string
+          description: Status of the invoice creation
+          enum: [success, error, pending]
+          example: "success"
+        error:
+          $ref: "#/components/schemas/ErrorResponse"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - error_message
+      properties:
+        error_code:
+          type: integer
+          description: Error code
+          example: 400
+        error_message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid VAT number format"
+
+    TxType:
+      type: string
+      description: Transaction type
+      enum:
+        - Test
+        - Live
+      example: "Live"
+
+  examples:
+    CreateInvoiceRequestExample:
+      summary: Example invoice creation request
+      value:
+        receipt_image: "iVBORw0KGgoAAAANSUhEUgAA..."
+        receipt_image_filename: "receipt_20240822.jpg"
+        receipt:
+          receipt_header:
+            store_name: "Supermarket ABC"
+            store_address: "Via Roma 123, 00100 Roma RM"
+            store_phone: "+39 06 12345678"
+            store_email: "info@supermarketabc.it"
+            merchant_vat: "IT98765432109"
+            merchant_name: "Supermarket ABC S.r.l."
+          receipt_body:
+            products:
+              - product_description: "Pasta integrale 500g"
+                product_quantity: "2"
+                product_total: "3.50"
+                product_vat: "0.77"
+              - product_description: "Olio extra vergine 1L"
+                product_quantity: "1"
+                product_total: "12.00"
+                product_vat: "2.64"
+                product_absolute_discount: "1.00"
+            receipt_total: "25.50"
+            receipt_vat: "4.59"
+          receipt_footer:
+            receipt_date_time: "2024-08-22T14:30:00Z"
+            receipt_number: "RCP-2024-001234"
+            rt_number: "RT001234567890"
+        type: "Live"
+        employee_name: "Mario Rossi"
+        company_vat: "IT12345678901"
+        purchase_description:
+          cost_center: "IT Department"
+          purchase_reason: "Office supplies"
+
+    CreateInvoiceResponseSuccessExample:
+      summary: Successful response
+      value:
+        transaction_id: "txn_abc123def456"
+        status: "success"
+
+    CreateInvoiceResponseErrorExample:
+      summary: Error response
+      value:
+        transaction_id: "txn_abc123def456"
+        status: "error"
+        error:
+          error_code: 400
+          error_message: "Invalid VAT number format"
