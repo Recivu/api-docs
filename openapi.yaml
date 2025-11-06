@@ -11,13 +11,22 @@ servers:
   - url: https://api.recivu.it/v1
     description: Production server
 
+tags:
+  - name: Invoices
+    description: "Endpoints to manage receipt conversion requests"
+  - name: Companies
+    description: "Endpoints for managing companies registered on Recivu"
+  - name: Employees
+
 paths:
   /invoices:
     post:
-      summary: Create invoice from receipt
+      tags:
+        - Invoices
+      summary: Request invoice conversion from receipt
       security:
         - bearerAuth: []
-      description: Convert a receipt image to an invoice
+      description: Request the conversion of a receipt into an invoice
       operationId: createInvoice
       requestBody:
         required: true
@@ -44,6 +53,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateInvoiceResponse"
+  /company:
+    post:
+      tags:
+        - Companies
+      summary: Register a new company to Recivu
+      security:
+        - bearerAuth: []
+      description: Register a new company to Recivu
+      operationId: registerCompany
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterCompanyRequest"
+      responses:
+        "200":
+          description: Company registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterCompanyResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+  /employee:
+    post:
+      tags:
+        - Employees
+      summary: Add a new employee
+      security:
+        - bearerAuth: []
+      description: Add a new employee to the Recivu ecosystem
+      operationId: createEmployee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmployeeRequest"
+      responses:
+        "200":
+          description: Employee created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateEmployeeResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateEmployeeResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateEmployeeResponse"
 
 components:
   securitySchemes:
@@ -58,8 +135,8 @@ components:
         - receipt_image
         - receipt
         - type
-        - employee_name
-        - company_vat
+        - employee_id
+        - company_id
       properties:
         receipt_image:
           type: string
@@ -73,14 +150,14 @@ components:
           $ref: "#/components/schemas/ReceiptRequest"
         type:
           $ref: "#/components/schemas/TxType"
-        employee_name:
+        employee_id:
           type: string
-          description: Name of the employee making the request
-          example: "Mario Rossi"
-        company_vat:
+          description: Shared ID of the employee associated with the receipt
+          example: "em_1nj12iei3"
+        company_id:
           type: string
-          description: Company VAT number
-          example: "IT12345678901"
+          description: Company shared ID
+          example: "co_1nj12iei3"
         purchase_description:
           $ref: "#/components/schemas/PurchaseContext"
 
@@ -199,7 +276,7 @@ components:
           example: "RCP-2024-001234"
         rt_number:
           type: string
-          description: RT (Ricevuta Telematica) number for fiscal receipts
+          description: RT (Registratore Telematico) number of the register
           example: "RT001234567890"
 
     PurchaseContext:
@@ -247,6 +324,21 @@ components:
           description: Human-readable error message
           example: "Invalid VAT number format"
 
+    InternalErrorResponse:
+      type: object
+      required:
+        - error_code
+        - error_message
+      properties:
+        error_code:
+          type: integer
+          description: Error code
+          example: 500
+        error_message:
+          type: string
+          description: Human-readable error message
+          example: "Internal server error"
+
     TxType:
       type: string
       description: Transaction type
@@ -254,6 +346,129 @@ components:
         - Test
         - Live
       example: "Live"
+
+    RegisterCompanyRequest:
+      type: object
+      required:
+        - vat_number
+        - company_name
+        - company_address
+        - company_transmission_channel
+        - company_contacts
+      properties:
+        vat_number:
+          type: string
+          description: Company's VAT number included of the international prefix. If extra-EU country put OO999999999
+          example: "IT07280260485"
+        company_name:
+          type: string
+          description: Company's legal name
+          example: "Recivu S.R.L."
+        company_address:
+          $ref: "#/components/schemas/CompanyAddressRequest"
+        company_transmission_channel:
+          $ref: "#/components/schemas/CompanyTransmissionChannelRequest"
+        company_contacts:
+          $ref: "#/components/schemas/CompanyContactsRequest"
+
+    CompanyAddressRequest:
+      type: object
+      required:
+        - address
+        - postal_code
+        - city
+        - province
+        - country
+      properties:
+        address:
+          type: string
+          description: Company's address and number
+          example: "Via Newton 104"
+        postal_code:
+          type: string
+          description: Company's postal_code
+          example: "50018"
+        city:
+          type: string
+          description: Company's city
+          example: "Scandicci"
+        province:
+          type: string
+          description: Company's province. Not required in case of a company registered in a foreign country
+          example: "FI"
+        country:
+          type: string
+          description: Company's country of origin
+          example: "IT"
+
+    CompanyTransmissionChannelRequest:
+      type: object
+      oneOf:
+        - required: [sdi_code]
+        - required: [pec_address]
+      properties:
+        sdi_code:
+          type: string
+          description: Company's SDI code. If foreign country put XXXXXXX
+          example: "KRRH6B9"
+        pec_address:
+          type: string
+          description: Company's legal mail
+          example: "postmaster@pec.recivu.com"
+      description: "One of the two options is required"
+
+    CompanyContactsRequest:
+      type: object
+      properties:
+        company_email:
+          type: string
+          description: Company's official email address
+          example: "info@recivu.it"
+        representative_email:
+          type: string
+          description: Company's representative's email address
+          example: "john@appleseed.com"
+
+    RegisterCompanyResponse:
+      type: object
+      required:
+        - company_id
+        - status
+      properties:
+        company_id:
+          type: string
+          description: Unique company identifier
+          example: "co_1nj12iei3"
+
+    CreateEmployeeRequest:
+      type: object
+      required:
+        - company_id
+        - first_name
+        - last_name
+      properties:
+        company_id:
+          type: string
+          description: Company's internal ID shared on creation
+          example: "co_1nj12iei3"
+        first_name:
+          type: string
+          description: Employee's first name
+          example: "John"
+        last_name:
+          type: string
+          description: Employee's last name
+          example: "Appleseed"
+
+    CreateEmployeeResponse:
+      type: object
+      required:
+        - employee_id
+      properties:
+        employee_id:
+          type: string
+          description: Unique employee identifier
+          example: "em_abc123def456"
 
   examples:
     CreateInvoiceRequestExample:
