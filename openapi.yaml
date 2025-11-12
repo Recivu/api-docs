@@ -87,6 +87,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetInvoiceStatusErrorResponse"
+  /invoices_download/{id}:
+    get:
+      tags:
+        - Invoices
+      summmary: Download invoice PDF
+      security:
+        - bearerAuth: []
+      description: Download the PDF file associated to an invoice
+      operationId: requestInvoicePDF
+      responses:
+        "200":
+          description: Invoice found and retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInvoiceFileResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInvoiceFileErrorResponse"
   /company:
     post:
       tags:
@@ -425,6 +447,36 @@ components:
           type: string
           description: Description of the error
           example: ""
+
+    GetInvoiceFileResponse:
+      type: object
+      required:
+        - transaction_id
+        - file_url
+      properties:
+        transaction_id:
+          type: string
+          description: Transaction ID assigned at request time
+          example: "txn_abc123def456"
+        file_url:
+          type: string
+          description: URL of the PDF
+          example: "https://recivu-receipts-dev.s3.eu-south-1.amazonaws.com/invoices/pdf/demo_fattura.pdf"
+
+    GetInvoiceFileErrorResponse:
+      type: object
+      required:
+        - transaction_id
+        - error
+      properties:
+        transaction_id:
+          type: string
+          description: Transaction ID assigned at request time
+          example: "txn_abc123def456"
+        error:
+          type: string
+          description: Description of the error
+          example: "Transaction not found"
 
     TxType:
       type: string
