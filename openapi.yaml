@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: Invoice Webhook API
-  description: API for converting receipts to invoices
+  title: Recivu API
+  description: API for interacting with the Recivu ecosystem
   version: 1.0.0
   contact:
     name: Recivu
@@ -53,6 +53,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateInvoiceResponse"
+  /invoices/{id}:
+    get:
+      tags:
+        - Invoices
+      summmary: Request status related to a conversion request
+      security:
+        - bearerAuth: []
+      description: Request an update on the status of a receipt conversion request
+      operationId: requestInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GetInvoiceStatusRequest"
+      responses:
+        "200":
+          description: Invoice found and retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInvoiceStatusResponse"
+        "202":
+          description: Invoice is still being processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInvoiceStatusPendingResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInvoiceStatusErrorResponse"
   /company:
     post:
       tags:
@@ -306,8 +340,6 @@ components:
           description: Status of the invoice creation
           enum: [success, error, pending]
           example: "success"
-        error:
-          $ref: "#/components/schemas/ErrorResponse"
 
     ErrorResponse:
       type: object
@@ -338,6 +370,61 @@ components:
           type: string
           description: Human-readable error message
           example: "Internal server error"
+
+    GetInvoiceStatusRequest:
+      type: object
+      required:
+        - transaction_id
+      properties:
+        transaction_id:
+          type: string
+          description: Transaction ID issued at request
+          example: "txn_abc123def456"
+
+    GetInvoiceStatusResponse:
+      type: object
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          description: Status of the receipt conversion request
+          example: "Invoice correctly sent"
+        error:
+          type: string
+          description: Description of the error
+          example: ""
+
+    GetInvoiceStatusPendingResponse:
+      type: object
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          description: Status of the receipt conversion request
+          example: "Receipt correctly received but not yet converted"
+        error:
+          type: string
+          description: Description of the error
+          example: "Receipt conversion request not found"
+
+    GetInvoiceStatusErrorResponse:
+      type: object
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          description: Status of the receipt conversion request
+          example: "Invoice correctly sent"
+        error:
+          type: string
+          description: Description of the error
+          example: ""
 
     TxType:
       type: string
