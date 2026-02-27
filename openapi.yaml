@@ -12,20 +12,20 @@ servers:
     description: Production server
 
 tags:
-  - name: Invoices
+  - name: Receipts
     description: "Endpoints to manage receipt conversion requests"
   - name: Companies
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
 
 paths:
-  /invoices:
+  /receipt:
     post:
       tags:
-        - Invoices
+        - Receipts
       summary: Request invoice conversion from receipt
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
       description: Request the conversion of a receipt into an invoice
       operationId: createInvoice
       requestBody:
@@ -53,13 +53,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateInvoiceResponse"
-  /invoices/{id}:
+  /receipts/{id}:
     get:
       tags:
-        - Invoices
+        - Receipts
       summary: Request the status related to a conversion request
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
       description: Request an update on the status of a receipt conversion request
       operationId: requestInvoice
       requestBody:
@@ -91,10 +91,10 @@ paths:
   /invoices_download/{id}:
     get:
       tags:
-        - Invoices
+        - Receipts
       summary: Download invoice PDF
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
       description: Download the PDF file associated to an invoice
       operationId: requestInvoicePDF
       responses:
@@ -117,7 +117,7 @@ paths:
         - Companies
       summary: Register a new company to Recivu
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
       description: Register a new company to Recivu
       operationId: registerCompany
       requestBody:
@@ -151,7 +151,7 @@ paths:
         - Employees
       summary: Add a new employee
       security:
-        - bearerAuth: []
+        - apiKeyAuth: []
       description: Add a new employee to the Recivu ecosystem
       operationId: createEmployee
       requestBody:
@@ -182,10 +182,10 @@ paths:
 
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
   schemas:
     CreateInvoiceRequest:
       type: object
