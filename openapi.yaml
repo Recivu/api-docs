@@ -145,6 +145,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
+  /company/{id}:
+    get:
+      tags:
+        - Companies
+      summary: Get a company by ID
+      security:
+        - apiKeyAuth: []
+      description: Retrieve a company's details along with its active employees
+      operationId: getCompany
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The company's unique ID
+          example: "co_1nj12iei3"
+      responses:
+        "200":
+          description: Company retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetCompanyResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+    delete:
+      tags:
+        - Companies
+      summary: Delete a company
+      security:
+        - apiKeyAuth: []
+      description: Soft-delete a company by setting its status to deleted
+      operationId: deleteCompany
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The company's unique ID
+          example: "co_1nj12iei3"
+      responses:
+        "200":
+          description: Company deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteCompanyResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /employee:
     post:
       tags:
@@ -179,6 +262,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateEmployeeResponse"
+
+  /employee/{id}:
+    delete:
+      tags:
+        - Employees
+      summary: Delete an employee
+      security:
+        - apiKeyAuth: []
+      description: Soft-delete an employee by setting their status to deleted
+      operationId: deleteEmployee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The employee's unique ID
+          example: "emp_abc123def"
+      responses:
+        "200":
+          description: Employee deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteEmployeeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Employee not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
 
 components:
   securitySchemes:
@@ -594,7 +720,90 @@ components:
         employee_id:
           type: string
           description: Unique employee identifier
-          example: "em_abc123def456"
+          example: "emp_abc123def"
+
+    EmployeeSummary:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+      properties:
+        id:
+          type: string
+          description: Unique employee identifier
+          example: "emp_abc123def"
+        first_name:
+          type: string
+          description: Employee's first name
+          example: "John"
+        last_name:
+          type: string
+          description: Employee's last name
+          example: "Appleseed"
+
+    GetCompanyResponse:
+      type: object
+      required:
+        - id
+        - vat_number
+        - company_name
+        - company_address
+        - company_transmission_channel
+        - company_contacts
+        - employees
+      properties:
+        id:
+          type: string
+          description: Unique company identifier
+          example: "co_1nj12iei3"
+        vat_number:
+          type: string
+          description: Company's VAT number
+          example: "IT07280260485"
+        company_name:
+          type: string
+          description: Company's legal name
+          example: "Recivu S.R.L."
+        company_address:
+          $ref: "#/components/schemas/CompanyAddressRequest"
+        company_transmission_channel:
+          $ref: "#/components/schemas/CompanyTransmissionChannelRequest"
+        company_contacts:
+          $ref: "#/components/schemas/CompanyContactsRequest"
+        employees:
+          type: array
+          description: Active employees belonging to this company
+          items:
+            $ref: "#/components/schemas/EmployeeSummary"
+
+    DeleteCompanyResponse:
+      type: object
+      required:
+        - status
+        - company_id
+      properties:
+        status:
+          type: string
+          example: "success"
+        company_id:
+          type: string
+          description: ID of the deleted company
+          example: "co_1nj12iei3"
+
+    DeleteEmployeeResponse:
+      type: object
+      required:
+        - status
+        - employee_id
+      properties:
+        status:
+          type: string
+          example: "success"
+        employee_id:
+          type: string
+          description: ID of the deleted employee
+          example: "emp_abc123def"
 
   examples:
     CreateInvoiceRequestExample:
