@@ -46,13 +46,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateInvoiceResponse"
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Employee or company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                employeeNotFound:
+                  summary: Employee ID not recognised
+                  value:
+                    error_code: 404
+                    error_message: "Employee not found"
+                companyNotFound:
+                  summary: Company ID not recognised
+                  value:
+                    error_code: 404
+                    error_message: "Company not found"
+                employeeNotInCompany:
+                  summary: Employee not registered for this company
+                  value:
+                    error_code: 404
+                    error_message: "Employee is not registered for this company"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateInvoiceResponse"
+                $ref: "#/components/schemas/InternalErrorResponse"
   /receipts/{id}:
     get:
       tags:
@@ -62,12 +84,14 @@ paths:
         - apiKeyAuth: []
       description: Request an update on the status of a receipt conversion request
       operationId: requestInvoice
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/GetInvoiceStatusRequest"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID issued at request time
+          example: "txn_abc123def456"
       responses:
         "200":
           description: Invoice found and retrieved successfully
@@ -255,13 +279,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateEmployeeResponse"
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateEmployeeResponse"
+                $ref: "#/components/schemas/InternalErrorResponse"
 
   /employee/{id}:
     delete:
@@ -405,11 +429,11 @@ components:
         receipt_total:
           type: string
           description: Total amount of the receipt
-          example: "25.50"
+          example: "15.50"
         receipt_vat:
           type: string
           description: Total VAT amount
-          example: "4.59"
+          example: "3.41"
 
     ProductRequest:
       type: object
@@ -521,16 +545,6 @@ components:
           description: Human-readable error message
           example: "Internal server error"
 
-    GetInvoiceStatusRequest:
-      type: object
-      required:
-        - transaction_id
-      properties:
-        transaction_id:
-          type: string
-          description: Transaction ID issued at request
-          example: "txn_abc123def456"
-
     GetInvoiceStatusResponse:
       type: object
       required:
@@ -559,7 +573,7 @@ components:
         error:
           type: string
           description: Description of the error
-          example: "Receipt conversion request not found"
+          example: ""
 
     GetInvoiceStatusErrorResponse:
       type: object
@@ -570,11 +584,11 @@ components:
         status:
           type: string
           description: Status of the receipt conversion request
-          example: "Invoice correctly sent"
+          example: "Receipt conversion request not found"
         error:
           type: string
           description: Description of the error
-          example: ""
+          example: "No conversion request found for the given ID"
 
     GetInvoiceFileErrorResponse:
       type: object
@@ -691,6 +705,10 @@ components:
           type: string
           description: Unique company identifier
           example: "co_1nj12iei3"
+        status:
+          type: string
+          description: Status of the company registration
+          example: "success"
 
     CreateEmployeeRequest:
       type: object
@@ -830,15 +848,15 @@ components:
                 product_total: "12.00"
                 product_vat: "2.64"
                 product_absolute_discount: "1.00"
-            receipt_total: "25.50"
-            receipt_vat: "4.59"
+            receipt_total: "15.50"
+            receipt_vat: "3.41"
           receipt_footer:
             receipt_date_time: "2024-08-22T14:30:00Z"
             receipt_number: "RCP-2024-001234"
             rt_number: "RT001234567890"
         type: "Live"
-        employee_name: "Mario Rossi"
-        company_vat: "IT12345678901"
+        employee_id: "em_1nj12iei3"
+        company_id: "co_1nj12iei3"
         purchase_description:
           cost_center: "IT Department"
           purchase_reason: "Office supplies"
@@ -852,8 +870,5 @@ components:
     CreateInvoiceResponseErrorExample:
       summary: Error response
       value:
-        transaction_id: "txn_abc123def456"
-        status: "error"
-        error:
-          error_code: 400
-          error_message: "Invalid VAT number format"
+        error_code: 400
+        error_message: "Invalid VAT number format"
