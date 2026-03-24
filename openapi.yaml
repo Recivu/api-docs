@@ -366,15 +366,15 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
-  /reports/transactions:
+  /reports/receipts:
     get:
       tags:
         - Reports
-      summary: Get receipts and invoices for a period
+      summary: Get receipts for a period (Beta)
       security:
         - apiKeyAuth: []
-      description: Retrieve all receipts and invoices submitted during a specified time period
-      operationId: getTransactionReport
+      description: "**Beta** — This endpoint is in beta and may change without notice.\n\nRetrieve all receipts submitted during a specified time period."
+      operationId: getReceiptsReport
       parameters:
         - name: from
           in: query
@@ -394,11 +394,74 @@ paths:
           example: "2024-08-31"
       responses:
         "200":
-          description: Report retrieved successfully
+          description: Receipts report retrieved successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransactionReportResponse"
+                $ref: "#/components/schemas/ReceiptsReportResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidDateRange:
+                  summary: Invalid date range
+                  value:
+                    error_code: 400
+                    error_message: "'from' date must be before 'to' date"
+                missingParameter:
+                  summary: Missing required parameter
+                  value:
+                    error_code: 400
+                    error_message: "Missing required query parameter: from"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+
+  /reports/invoices:
+    get:
+      tags:
+        - Reports
+      summary: Get invoices for a period (Beta)
+      security:
+        - apiKeyAuth: []
+      description: "**Beta** — This endpoint is in beta and may change without notice.\n\nRetrieve all invoices generated during a specified time period."
+      operationId: getInvoicesReport
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date of the period (inclusive)
+          example: "2024-08-01"
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date of the period (inclusive)
+          example: "2024-08-31"
+      responses:
+        "200":
+          description: Invoices report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoicesReportResponse"
         "400":
           description: Bad request
           content:
@@ -932,13 +995,13 @@ components:
           description: ID of the deleted employee
           example: "emp_abc123def"
 
-    TransactionReportResponse:
+    ReceiptsReportResponse:
       type: object
       required:
         - from
         - to
         - total_count
-        - transactions
+        - receipts
       properties:
         from:
           type: string
@@ -952,31 +1015,37 @@ components:
           example: "2024-08-31"
         total_count:
           type: integer
-          description: Total number of transactions in the period
+          description: Total number of receipts in the period
           example: 3
-        transactions:
+        receipts:
           type: array
-          description: List of transactions in the period
+          description: List of receipts in the period
           items:
-            $ref: "#/components/schemas/TransactionSummary"
+            $ref: "#/components/schemas/ReceiptSummary"
 
-    TransactionSummary:
+    ReceiptSummary:
       type: object
       required:
+        - receipt_id
         - transaction_id
         - status
         - employee_id
         - company_id
         - receipt_date
+        - receipt_total
         - created_at
       properties:
+        receipt_id:
+          type: string
+          description: Unique receipt identifier
+          example: "rcp_abc123def"
         transaction_id:
           type: string
-          description: Unique transaction identifier
+          description: Transaction ID of the conversion request
           example: "txn_abc123def456"
         status:
           type: string
-          description: Current status of the conversion request
+          description: Current status of the receipt conversion
           enum:
             - pending
             - completed
@@ -999,15 +1068,80 @@ components:
           type: string
           description: Total amount of the receipt
           example: "15.50"
-        invoice_id:
-          type: string
-          description: ID of the generated invoice, if conversion completed
-          example: "inv_xyz789ghi"
         created_at:
           type: string
           format: date-time
-          description: When the conversion request was created
+          description: When the receipt was submitted
           example: "2024-08-22T14:35:00Z"
+
+    InvoicesReportResponse:
+      type: object
+      required:
+        - from
+        - to
+        - total_count
+        - invoices
+      properties:
+        from:
+          type: string
+          format: date
+          description: Start date of the requested period
+          example: "2024-08-01"
+        to:
+          type: string
+          format: date
+          description: End date of the requested period
+          example: "2024-08-31"
+        total_count:
+          type: integer
+          description: Total number of invoices in the period
+          example: 2
+        invoices:
+          type: array
+          description: List of invoices in the period
+          items:
+            $ref: "#/components/schemas/InvoiceSummary"
+
+    InvoiceSummary:
+      type: object
+      required:
+        - invoice_id
+        - receipt_id
+        - transaction_id
+        - employee_id
+        - company_id
+        - invoice_total
+        - created_at
+      properties:
+        invoice_id:
+          type: string
+          description: Unique invoice identifier
+          example: "inv_xyz789ghi"
+        receipt_id:
+          type: string
+          description: ID of the receipt this invoice was generated from
+          example: "rcp_abc123def"
+        transaction_id:
+          type: string
+          description: Transaction ID of the conversion request
+          example: "txn_abc123def456"
+        employee_id:
+          type: string
+          description: ID of the employee who submitted the original receipt
+          example: "em_1nj12iei3"
+        company_id:
+          type: string
+          description: ID of the company
+          example: "co_1nj12iei3"
+        invoice_total:
+          type: string
+          description: Total amount of the invoice
+          example: "15.50"
+        created_at:
+          type: string
+          format: date-time
+          description: When the invoice was generated
+          example: "2024-08-22T15:00:00Z"
 
     WebhookPayload:
       type: object

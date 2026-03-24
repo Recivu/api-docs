@@ -42,7 +42,8 @@
           {
             "group": "Reports",
             "pages": [
-              "api-reference/reports/get-transactions"
+              "api-reference/reports/get-receipts",
+              "api-reference/reports/get-invoices"
             ]
           }
         ]
