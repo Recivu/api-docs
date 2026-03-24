@@ -38,6 +38,12 @@
               "api-reference/employees/create",
               "api-reference/employees/delete"
             ]
+          },
+          {
+            "group": "Reports",
+            "pages": [
+              "api-reference/reports/get-transactions"
+            ]
           }
         ]
       }

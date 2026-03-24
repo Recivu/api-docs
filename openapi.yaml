@@ -17,6 +17,8 @@ tags:
   - name: Companies
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
+  - name: Reports
+    description: "Endpoints for retrieving activity reports"
 
 paths:
   /receipt:
@@ -353,6 +355,69 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Employee not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+
+  /reports/transactions:
+    get:
+      tags:
+        - Reports
+      summary: Get receipts and invoices for a period
+      security:
+        - apiKeyAuth: []
+      description: Retrieve all receipts and invoices submitted during a specified time period
+      operationId: getTransactionReport
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date of the period (inclusive)
+          example: "2024-08-01"
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date of the period (inclusive)
+          example: "2024-08-31"
+      responses:
+        "200":
+          description: Report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionReportResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidDateRange:
+                  summary: Invalid date range
+                  value:
+                    error_code: 400
+                    error_message: "'from' date must be before 'to' date"
+                missingParameter:
+                  summary: Missing required parameter
+                  value:
+                    error_code: 400
+                    error_message: "Missing required query parameter: from"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -866,6 +931,83 @@ components:
           type: string
           description: ID of the deleted employee
           example: "emp_abc123def"
+
+    TransactionReportResponse:
+      type: object
+      required:
+        - from
+        - to
+        - total_count
+        - transactions
+      properties:
+        from:
+          type: string
+          format: date
+          description: Start date of the requested period
+          example: "2024-08-01"
+        to:
+          type: string
+          format: date
+          description: End date of the requested period
+          example: "2024-08-31"
+        total_count:
+          type: integer
+          description: Total number of transactions in the period
+          example: 3
+        transactions:
+          type: array
+          description: List of transactions in the period
+          items:
+            $ref: "#/components/schemas/TransactionSummary"
+
+    TransactionSummary:
+      type: object
+      required:
+        - transaction_id
+        - status
+        - employee_id
+        - company_id
+        - receipt_date
+        - created_at
+      properties:
+        transaction_id:
+          type: string
+          description: Unique transaction identifier
+          example: "txn_abc123def456"
+        status:
+          type: string
+          description: Current status of the conversion request
+          enum:
+            - pending
+            - completed
+            - failed
+          example: "completed"
+        employee_id:
+          type: string
+          description: ID of the employee who submitted the receipt
+          example: "em_1nj12iei3"
+        company_id:
+          type: string
+          description: ID of the company
+          example: "co_1nj12iei3"
+        receipt_date:
+          type: string
+          format: date-time
+          description: Date and time from the original receipt
+          example: "2024-08-22T14:30:00Z"
+        receipt_total:
+          type: string
+          description: Total amount of the receipt
+          example: "15.50"
+        invoice_id:
+          type: string
+          description: ID of the generated invoice, if conversion completed
+          example: "inv_xyz789ghi"
+        created_at:
+          type: string
+          format: date-time
+          description: When the conversion request was created
+          example: "2024-08-22T14:35:00Z"
 
     WebhookPayload:
       type: object
