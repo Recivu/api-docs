@@ -75,6 +75,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
+      callbacks:
+        receiptStatusChanged:
+          '{$request.body#/webhook_url}':
+            post:
+              summary: Webhook notification for receipt status change
+              description: |
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes.
+                Recivu signs each request with an `x-recivu-signature` header for verification.
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: "#/components/schemas/WebhookPayload"
+                    examples:
+                      conversionCompleted:
+                        summary: Conversion completed successfully
+                        value:
+                          event: "receipt.conversion.completed"
+                          transaction_id: "txn_abc123def456"
+                          status: "completed"
+                          error: ""
+                          timestamp: "2024-08-22T15:45:00Z"
+                      conversionFailed:
+                        summary: Conversion failed
+                        value:
+                          event: "receipt.conversion.failed"
+                          transaction_id: "txn_abc123def456"
+                          status: "failed"
+                          error: "Unable to extract invoice data from receipt"
+                          timestamp: "2024-08-22T15:45:00Z"
+              responses:
+                "200":
+                  description: Webhook received successfully
   /receipts/{id}:
     get:
       tags:
@@ -636,6 +670,11 @@ components:
           $ref: "#/components/schemas/CompanyTransmissionChannelRequest"
         company_contacts:
           $ref: "#/components/schemas/CompanyContactsRequest"
+        webhook_url:
+          type: string
+          format: uri
+          description: URL where Recivu will send POST notifications when the status of a receipt conversion request changes. Must be HTTPS.
+          example: "https://partner.example.com/webhooks/recivu"
 
     CompanyAddressRequest:
       type: object
@@ -789,6 +828,11 @@ components:
           $ref: "#/components/schemas/CompanyTransmissionChannelRequest"
         company_contacts:
           $ref: "#/components/schemas/CompanyContactsRequest"
+        webhook_url:
+          type: string
+          format: uri
+          description: Registered webhook URL for receipt status notifications
+          example: "https://partner.example.com/webhooks/recivu"
         employees:
           type: array
           description: Active employees belonging to this company
@@ -822,6 +866,42 @@ components:
           type: string
           description: ID of the deleted employee
           example: "emp_abc123def"
+
+    WebhookPayload:
+      type: object
+      required:
+        - event
+        - transaction_id
+        - status
+        - timestamp
+      properties:
+        event:
+          type: string
+          description: The type of event that triggered the webhook
+          enum:
+            - receipt.conversion.completed
+            - receipt.conversion.failed
+          example: "receipt.conversion.completed"
+        transaction_id:
+          type: string
+          description: The transaction ID of the receipt conversion request
+          example: "txn_abc123def456"
+        status:
+          type: string
+          description: The new status of the conversion request
+          enum:
+            - completed
+            - failed
+          example: "completed"
+        error:
+          type: string
+          description: Error description if the conversion failed, empty otherwise
+          example: ""
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the status changed
+          example: "2024-08-22T15:45:00Z"
 
   examples:
     CreateInvoiceRequestExample:
