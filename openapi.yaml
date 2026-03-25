@@ -171,6 +171,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetInvoiceFileErrorResponse"
+
+  /receipts/{id}/approve:
+    post:
+      tags:
+        - Receipts
+      summary: Approve a receipt
+      security:
+        - apiKeyAuth: []
+      description: Mark a receipt as approved by the partner
+      operationId: approveReceipt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID of the receipt
+          example: "txn_abc123def456"
+      responses:
+        "200":
+          description: Receipt approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptApprovalResponse"
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Receipt already has a final approval status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                alreadyApproved:
+                  summary: Receipt was already approved
+                  value:
+                    error_code: 409
+                    error_message: "Receipt has already been approved"
+                alreadyRejected:
+                  summary: Receipt was already rejected
+                  value:
+                    error_code: 409
+                    error_message: "Receipt has already been rejected"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+
+  /receipts/{id}/reject:
+    post:
+      tags:
+        - Receipts
+      summary: Reject a receipt
+      security:
+        - apiKeyAuth: []
+      description: Mark a receipt as rejected by the partner
+      operationId: rejectReceipt
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID of the receipt
+          example: "txn_abc123def456"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiptRejectionRequest"
+      responses:
+        "200":
+          description: Receipt rejected successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptApprovalResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Receipt not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Receipt already has a final approval status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+
   /company:
     post:
       tags:
@@ -1142,6 +1252,34 @@ components:
           format: date-time
           description: When the invoice was generated
           example: "2024-08-22T15:00:00Z"
+
+    ReceiptRejectionRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: Reason for rejecting the receipt
+          example: "Receipt is not legible"
+
+    ReceiptApprovalResponse:
+      type: object
+      required:
+        - transaction_id
+        - approval_status
+      properties:
+        transaction_id:
+          type: string
+          description: The transaction ID of the receipt
+          example: "txn_abc123def456"
+        approval_status:
+          type: string
+          description: The new approval status of the receipt
+          enum:
+            - approved
+            - rejected
+          example: "approved"
 
     WebhookPayload:
       type: object
