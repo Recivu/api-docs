@@ -157,6 +157,22 @@ paths:
         - apiKeyAuth: []
       description: Download the PDF file associated to an invoice
       operationId: requestInvoicePDF
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The transaction ID issued at request time
+          example: "txn_abc123def456"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - Test
+          description: When set to "Test", returns a mock PDF for testing purposes
       responses:
         "200":
           description: Invoice PDF file returned successfully
