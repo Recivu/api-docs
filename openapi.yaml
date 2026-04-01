@@ -172,7 +172,7 @@ paths:
             type: string
             enum:
               - Test
-          description: When set to "Test", returns a mock PDF for testing purposes
+          description: When set to "Test", returns a mock PDF for testing purposes. Any id value can be used in test mode
       responses:
         "200":
           description: Invoice PDF file returned successfully
