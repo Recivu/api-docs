@@ -629,7 +629,6 @@ components:
       type: object
       required:
         - receipt_image
-        - receipt
         - type
         - employee_id
         - company_id
