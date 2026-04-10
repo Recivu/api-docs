@@ -526,9 +526,10 @@ paths:
       security:
         - apiKeyAuth: []
       description: |
-        Replace the editable fields of an employee. The employee's `company_id`
-        is immutable — transferring an employee between companies is a
-        different operation, not an edit.
+        Replace the editable fields of an employee. `company_id` is optional:
+        when provided, the employee is reassigned to that company (which must
+        belong to the same partner); when omitted, the employee's company is
+        left unchanged.
       operationId: updateEmployee
       parameters:
         - name: id
@@ -564,11 +565,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Employee not found
+          description: Employee or target company not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                employeeNotFound:
+                  summary: Employee ID not recognised
+                  value:
+                    error_code: 404
+                    error_message: "Employee not found"
+                companyNotFound:
+                  summary: Target company not found or not owned by partner
+                  value:
+                    error_code: 404
+                    error_message: "Target company not found"
         "500":
           description: Internal server error
           content:
@@ -1301,6 +1313,10 @@ components:
         - first_name
         - last_name
       properties:
+        company_id:
+          type: string
+          description: "Optional: when provided, reassigns the employee to this company (must belong to the same partner). When omitted, the employee's current company is left unchanged."
+          example: "co_1nj12iei3"
         first_name:
           type: string
           description: Employee's first name
@@ -1310,9 +1326,9 @@ components:
           description: Employee's last name
           example: "Appleseed"
       description: |
-        Body for editing an employee. The employee's `company_id` is
-        intentionally absent — it is immutable and any value provided would be
-        ignored.
+        Body for editing an employee. `company_id` is optional: when provided,
+        the employee is reassigned to that company; when omitted, the
+        employee's company is left unchanged.
 
     UpdateEmployeeResponse:
       type: object
