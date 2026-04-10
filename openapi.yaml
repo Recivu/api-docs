@@ -780,6 +780,15 @@ components:
           example: "co_1nj12iei3"
         purchase_description:
           $ref: "#/components/schemas/PurchaseContext"
+        webhook_url:
+          type: string
+          format: uri
+          description: |
+            Optional per-request override for the callback URL. When provided,
+            the receipt-status webhook for THIS receipt is delivered here
+            instead of the company-registered webhook_url. Must be HTTPS.
+            Omit or send an empty string to use the company-level URL.
+          example: "https://partner.example.com/webhooks/recivu/override"
 
     ReceiptRequest:
       type: object
