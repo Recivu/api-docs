@@ -96,7 +96,7 @@ paths:
                         summary: Conversion completed successfully
                         value:
                           event: "receipt.conversion.completed"
-                          transaction_id: "txn_abc123def456"
+                          receipt_id: "rcp_abc123def"
                           status: "completed"
                           error: ""
                           timestamp: "2024-08-22T15:45:00Z"
@@ -104,7 +104,7 @@ paths:
                         summary: Conversion failed
                         value:
                           event: "receipt.conversion.failed"
-                          transaction_id: "txn_abc123def456"
+                          receipt_id: "rcp_abc123def"
                           status: "failed"
                           error: "Unable to extract invoice data from receipt"
                           timestamp: "2024-08-22T15:45:00Z"
@@ -126,8 +126,8 @@ paths:
           required: true
           schema:
             type: string
-          description: The transaction ID issued at request time
-          example: "txn_abc123def456"
+          description: The receipt ID issued at request time
+          example: "rcp_abc123def"
       responses:
         "200":
           description: Invoice found and retrieved successfully
@@ -163,8 +163,8 @@ paths:
           required: true
           schema:
             type: string
-          description: The transaction ID issued at request time
-          example: "txn_abc123def456"
+          description: The receipt ID issued at request time
+          example: "rcp_abc123def"
         - name: type
           in: query
           required: false
@@ -203,8 +203,8 @@ paths:
           required: true
           schema:
             type: string
-          description: The transaction ID of the receipt
-          example: "txn_abc123def456"
+          description: The receipt ID
+          example: "rcp_abc123def"
       responses:
         "200":
           description: Receipt approved successfully
@@ -257,8 +257,8 @@ paths:
           required: true
           schema:
             type: string
-          description: The transaction ID of the receipt
-          example: "txn_abc123def456"
+          description: The receipt ID
+          example: "rcp_abc123def"
       requestBody:
         required: true
         content:
@@ -892,17 +892,17 @@ components:
     GetInvoiceFileErrorResponse:
       type: object
       required:
-        - transaction_id
+        - receipt_id
         - error
       properties:
-        transaction_id:
+        receipt_id:
           type: string
-          description: Transaction ID assigned at request time
-          example: "txn_abc123def456"
+          description: Receipt ID assigned at request time
+          example: "rcp_abc123def"
         error:
           type: string
           description: Description of the error
-          example: "Transaction not found"
+          example: "Receipt not found"
 
     TxType:
       type: string
@@ -1164,7 +1164,6 @@ components:
       type: object
       required:
         - receipt_id
-        - transaction_id
         - status
         - employee_id
         - company_id
@@ -1176,10 +1175,6 @@ components:
           type: string
           description: Unique receipt identifier
           example: "rcp_abc123def"
-        transaction_id:
-          type: string
-          description: Transaction ID of the conversion request
-          example: "txn_abc123def456"
         status:
           type: string
           description: Current status of the receipt conversion
@@ -1244,7 +1239,6 @@ components:
       required:
         - invoice_id
         - receipt_id
-        - transaction_id
         - employee_id
         - company_id
         - invoice_total
@@ -1258,10 +1252,6 @@ components:
           type: string
           description: ID of the receipt this invoice was generated from
           example: "rcp_abc123def"
-        transaction_id:
-          type: string
-          description: Transaction ID of the conversion request
-          example: "txn_abc123def456"
         employee_id:
           type: string
           description: ID of the employee who submitted the original receipt
@@ -1293,13 +1283,13 @@ components:
     ReceiptApprovalResponse:
       type: object
       required:
-        - transaction_id
+        - receipt_id
         - approval_status
       properties:
-        transaction_id:
+        receipt_id:
           type: string
-          description: The transaction ID of the receipt
-          example: "txn_abc123def456"
+          description: The receipt ID
+          example: "rcp_abc123def"
         approval_status:
           type: string
           description: The new approval status of the receipt
@@ -1312,7 +1302,7 @@ components:
       type: object
       required:
         - event
-        - transaction_id
+        - receipt_id
         - status
         - timestamp
       properties:
@@ -1323,10 +1313,10 @@ components:
             - receipt.conversion.completed
             - receipt.conversion.failed
           example: "receipt.conversion.completed"
-        transaction_id:
+        receipt_id:
           type: string
-          description: The transaction ID of the receipt conversion request
-          example: "txn_abc123def456"
+          description: The receipt ID of the conversion request
+          example: "rcp_abc123def"
         status:
           type: string
           description: The new status of the conversion request
