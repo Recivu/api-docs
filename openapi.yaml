@@ -801,13 +801,13 @@ components:
     CreateInvoiceResponse:
       type: object
       required:
-        - transaction_id
+        - receipt_id
         - status
       properties:
-        transaction_id:
+        receipt_id:
           type: string
-          description: Unique transaction identifier
-          example: "txn_abc123def456"
+          description: Unique receipt identifier assigned at ingestion. Use this id to poll `GET /receipts/{id}` and to download the generated invoice via `GET /invoices_download/{id}`.
+          example: "rcp_abc123def"
         status:
           type: string
           description: Status of the invoice creation
@@ -1385,7 +1385,7 @@ components:
     CreateInvoiceResponseSuccessExample:
       summary: Successful response
       value:
-        transaction_id: "txn_abc123def456"
+        receipt_id: "rcp_abc123def"
         status: "success"
 
     CreateInvoiceResponseErrorExample:
