@@ -1263,6 +1263,11 @@ components:
           $ref: "#/components/schemas/CompanyTransmissionChannelRequest"
         company_contacts:
           $ref: "#/components/schemas/CompanyContactsRequest"
+        webhook_url:
+          type: string
+          format: uri
+          description: URL where Recivu will send POST notifications when the status of a receipt conversion request changes. Must be HTTPS. Pass an empty string to clear a previously registered webhook.
+          example: "https://partner.example.com/webhooks/recivu"
       description: |
         Body for editing a company. The VAT number is intentionally absent — it
         is immutable and any value provided would be ignored.
