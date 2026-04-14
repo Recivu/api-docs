@@ -99,6 +99,7 @@ paths:
                           receipt_id: "rcp_abc123def"
                           status: "completed"
                           error: ""
+                          recovered_vat: 3.41
                           timestamp: "2024-08-22T15:45:00Z"
                       conversionFailed:
                         summary: Conversion failed
@@ -107,6 +108,7 @@ paths:
                           receipt_id: "rcp_abc123def"
                           status: "failed"
                           error: "Unable to extract invoice data from receipt"
+                          recovered_vat: 0
                           timestamp: "2024-08-22T15:45:00Z"
               responses:
                 "200":
@@ -1540,6 +1542,11 @@ components:
           type: string
           description: Error description if the conversion failed, empty otherwise
           example: ""
+        recovered_vat:
+          type: number
+          format: float
+          description: The amount of VAT (IVA) recovered from the receipt, in EUR. Zero if the conversion failed.
+          example: 3.41
         timestamp:
           type: string
           format: date-time
