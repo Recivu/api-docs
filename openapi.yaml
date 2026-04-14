@@ -84,7 +84,35 @@ paths:
               summary: Webhook notification for receipt status change
               description: |
                 Sent to the company's registered webhook URL when the status of a receipt conversion request changes.
-                Recivu signs each request with an `x-recivu-signature` header for verification.
+
+                ### Signature verification
+
+                Every webhook request includes an `x-recivu-signature` header that lets you verify the request originated from Recivu and was not tampered with in transit.
+
+                The signature is an HMAC-SHA256 hex digest of the **raw request body**, computed using the `webhook_signing_secret` returned when you register a company.
+
+                **How to verify (pseudocode):**
+
+                ```
+                expected = HMAC-SHA256(webhook_signing_secret, raw_request_body)
+                actual   = request.headers["x-recivu-signature"]  // format: "sha256=<hex>"
+                signature_valid = constant_time_compare("sha256=" + hex(expected), actual)
+                ```
+
+                **Important:**
+                - Always use a **constant-time comparison** function to prevent timing attacks.
+                - Compute the HMAC over the **raw body bytes**, not a re-serialized or parsed version.
+                - If the signature does not match, reject the request with `403`.
+              parameters:
+                - name: x-recivu-signature
+                  in: header
+                  required: true
+                  schema:
+                    type: string
+                  description: |
+                    HMAC-SHA256 signature of the raw request body, prefixed with `sha256=`.
+                    Use the `webhook_signing_secret` from the company registration response to verify.
+                  example: "sha256=a1b2c3d4e5f6..."
               requestBody:
                 required: true
                 content:
@@ -1062,7 +1090,9 @@ components:
         webhook_url:
           type: string
           format: uri
-          description: URL where Recivu will send POST notifications when the status of a receipt conversion request changes. Must be HTTPS.
+          description: |
+            URL where Recivu will send POST notifications when the status of a receipt conversion request changes. Must be HTTPS.
+            When provided, the response will include a `webhook_signing_secret` for verifying the `x-recivu-signature` header on incoming webhooks.
           example: "https://partner.example.com/webhooks/recivu"
 
     CompanyAddressRequest:
@@ -1137,6 +1167,14 @@ components:
           type: string
           description: Status of the company registration
           example: "success"
+        webhook_signing_secret:
+          type: string
+          description: |
+            Secret key for verifying webhook signatures. Returned only when a
+            `webhook_url` is provided during registration. Store this securely —
+            it is shown only once and cannot be retrieved later. Use it to verify
+            the `x-recivu-signature` header on incoming webhook requests.
+          example: "whsec_k7x9m2p4q8r1t5v3w6y0"
 
     CreateEmployeeRequest:
       type: object
