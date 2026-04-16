@@ -595,11 +595,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Employee not found
+          description: Employee or target company not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                employeeNotFound:
+                  summary: Employee ID not recognised
+                  value:
+                    error_code: 404
+                    error_message: "Employee not found"
+                companyNotFound:
+                  summary: Target company not found or not owned by partner
+                  value:
+                    error_code: 404
+                    error_message: "Target company not found"
         "500":
           description: Internal server error
           content:
