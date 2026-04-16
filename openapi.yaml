@@ -176,7 +176,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetInvoiceStatusErrorResponse"
+                $ref: "#/components/schemas/ErrorResponse"
 
   /invoices_download/{id}:
     get:
@@ -216,7 +216,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GetInvoiceFileErrorResponse"
+                $ref: "#/components/schemas/ErrorResponse"
 
   /receipts/{id}/approve:
     post:
@@ -343,7 +343,7 @@ paths:
             schema:
               $ref: "#/components/schemas/RegisterCompanyRequest"
       responses:
-        "200":
+        "201":
           description: Company registered successfully
           content:
             application/json:
@@ -529,7 +529,7 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateEmployeeRequest"
       responses:
-        "200":
+        "201":
           description: Employee created successfully
           content:
             application/json:
@@ -556,9 +556,10 @@ paths:
       security:
         - apiKeyAuth: []
       description: |
-        Replace the editable fields of an employee. The employee's `company_id`
-        is immutable — transferring an employee between companies is a
-        different operation, not an edit.
+        Replace the editable fields of an employee. When `company_id` is
+        provided, the employee is reassigned to that company (which must belong
+        to the same partner). When omitted, the employee's company remains
+        unchanged.
       operationId: updateEmployee
       parameters:
         - name: id
@@ -878,13 +879,15 @@ components:
           items:
             $ref: "#/components/schemas/ProductRequest"
         receipt_total:
-          type: string
+          type: number
+          format: float
           description: Total amount of the receipt
-          example: "15.50"
+          example: 15.50
         receipt_vat:
-          type: string
+          type: number
+          format: float
           description: Total VAT amount
-          example: "3.41"
+          example: 3.41
 
     ProductRequest:
       type: object
@@ -898,25 +901,30 @@ components:
           description: Description of the product
           example: "Pasta integrale 500g"
         product_quantity:
-          type: string
+          type: number
+          format: float
           description: Quantity of the product
-          example: "2"
+          example: 2
         product_total:
-          type: string
+          type: number
+          format: float
           description: Total price for this product
-          example: "3.50"
+          example: 3.50
         product_vat:
-          type: string
+          type: number
+          format: float
           description: VAT amount for this product
-          example: "0.77"
+          example: 0.77
         product_absolute_discount:
-          type: string
+          type: number
+          format: float
           description: Absolute discount amount
-          example: "1.00"
+          example: 1.00
         product_percent_discount:
-          type: string
+          type: number
+          format: float
           description: Percentage discount
-          example: "10%"
+          example: 10
 
     ReceiptFooter:
       type: object
@@ -1025,36 +1033,6 @@ components:
           type: string
           description: Description of the error
           example: ""
-
-    GetInvoiceStatusErrorResponse:
-      type: object
-      required:
-        - status
-        - error
-      properties:
-        status:
-          type: string
-          description: Status of the receipt conversion request
-          example: "Receipt conversion request not found"
-        error:
-          type: string
-          description: Description of the error
-          example: "No conversion request found for the given ID"
-
-    GetInvoiceFileErrorResponse:
-      type: object
-      required:
-        - receipt_id
-        - error
-      properties:
-        receipt_id:
-          type: string
-          description: Receipt ID assigned at request time
-          example: "rcp_abc123def"
-        error:
-          type: string
-          description: Description of the error
-          example: "Receipt not found"
 
     TxType:
       type: string
@@ -1341,6 +1319,13 @@ components:
         - first_name
         - last_name
       properties:
+        company_id:
+          type: string
+          description: |
+            Optional. When provided, the employee is reassigned to this company.
+            The target company must belong to the same partner. When omitted,
+            the employee's company remains unchanged.
+          example: "co_1nj12iei3"
         first_name:
           type: string
           description: Employee's first name
@@ -1349,10 +1334,6 @@ components:
           type: string
           description: Employee's last name
           example: "Appleseed"
-      description: |
-        Body for editing an employee. The employee's `company_id` is
-        intentionally absent — it is immutable and any value provided would be
-        ignored.
 
     UpdateEmployeeResponse:
       type: object
@@ -1433,9 +1414,10 @@ components:
           description: Date and time from the original receipt
           example: "2024-08-22T14:30:00Z"
         receipt_total:
-          type: string
+          type: number
+          format: float
           description: Total amount of the receipt
-          example: "15.50"
+          example: 15.50
         created_at:
           type: string
           format: date-time
@@ -1497,9 +1479,10 @@ components:
           description: ID of the company
           example: "co_1nj12iei3"
         invoice_total:
-          type: string
+          type: number
+          format: float
           description: Total amount of the invoice
-          example: "15.50"
+          example: 15.50
         created_at:
           type: string
           format: date-time
@@ -1592,16 +1575,16 @@ components:
           receipt_body:
             products:
               - product_description: "Pasta integrale 500g"
-                product_quantity: "2"
-                product_total: "3.50"
-                product_vat: "0.77"
+                product_quantity: 2
+                product_total: 3.50
+                product_vat: 0.77
               - product_description: "Olio extra vergine 1L"
-                product_quantity: "1"
-                product_total: "12.00"
-                product_vat: "2.64"
-                product_absolute_discount: "1.00"
-            receipt_total: "15.50"
-            receipt_vat: "3.41"
+                product_quantity: 1
+                product_total: 12.00
+                product_vat: 2.64
+                product_absolute_discount: 1.00
+            receipt_total: 15.50
+            receipt_vat: 3.41
           receipt_footer:
             receipt_date_time: "2024-08-22T14:30:00Z"
             receipt_number: "RCP-2024-001234"
