@@ -4,6 +4,12 @@ All notable changes to the Recivu API will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `type` field (`Live` or `Test`) on `POST /company`, defaulting to `Live` when omitted. Lets partners register a sandbox `Test` company alongside a `Live` one with the same VAT number without conflict. Also returned on `GET /company/{id}`.
+- End-to-end Test flow on `POST /receipt`. When the request `type` is `Test`, the receipt is not persisted and a signed `receipt.conversion.completed` webhook is fired to the target company's `webhook_url` (if configured) so partners can validate their signature verification and callback handling.
+- `?type=Test` query parameter on `GET /receipts/{id}` — returns a mock completed response without database access, letting partners exercise status polling in test mode with any receipt id.
+
 ### Changed
 
 - Monetary and quantity fields (`receipt_total`, `receipt_vat`, `product_total`, `product_vat`, `product_quantity`, `product_absolute_discount`, `product_percent_discount`, `invoice_total`) changed from `string` to `number` (float) to match implementation

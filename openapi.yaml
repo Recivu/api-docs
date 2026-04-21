@@ -28,7 +28,12 @@ paths:
       summary: Request invoice conversion from receipt
       security:
         - apiKeyAuth: []
-      description: Request the conversion of a receipt into an invoice
+      description: |
+        Request the conversion of a receipt into an invoice.
+
+        ### Test mode
+
+        When `type` is `Test`, the receipt is not persisted and no real conversion is performed — the endpoint immediately returns a `success` response with a freshly-generated `receipt_id`. If the target company has a `webhook_url` configured, Recivu also fires a single mock webhook for that `receipt_id` with `event: receipt.conversion.completed` and `status: completed`, signed with the company's `webhook_signing_secret` exactly like a live callback. This lets partners exercise the full happy-path flow (submit → webhook → status poll → PDF download) end-to-end without touching production data.
       operationId: createInvoice
       requestBody:
         required: true
@@ -158,6 +163,14 @@ paths:
             type: string
           description: The receipt ID issued at request time
           example: "rcp_abc123def"
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - Test
+          description: When set to "Test", returns a mock completed response without touching the database. Any id value can be used in test mode.
       responses:
         "200":
           description: Invoice found and retrieved successfully
@@ -1083,6 +1096,14 @@ components:
             URL where Recivu will send POST notifications when the status of a receipt conversion request changes. Must be HTTPS.
             When provided, the response will include a `webhook_signing_secret` for verifying the `x-recivu-signature` header on incoming webhooks.
           example: "https://partner.example.com/webhooks/recivu"
+        type:
+          allOf:
+            - $ref: "#/components/schemas/TxType"
+          description: |
+            Registration mode. `Test` lets partners register a sandbox company
+            that does not conflict with a `Live` company sharing the same VAT.
+            Defaults to `Live` when omitted.
+          default: "Live"
 
     CompanyAddressRequest:
       type: object
@@ -1249,6 +1270,10 @@ components:
           format: uri
           description: Registered webhook URL for receipt status notifications
           example: "https://partner.example.com/webhooks/recivu"
+        type:
+          allOf:
+            - $ref: "#/components/schemas/TxType"
+          description: Registration mode (`Live` or `Test`)
         employees:
           type: array
           description: Active employees belonging to this company
