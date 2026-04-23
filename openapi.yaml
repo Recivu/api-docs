@@ -88,7 +88,7 @@ paths:
             post:
               summary: Webhook notification for receipt status change
               description: |
-                Sent to the company's registered webhook URL when the status of a receipt conversion request changes.
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for three events: `receipt.conversion.completed` (invoice issued), `receipt.conversion.failed` (conversion could not complete), and `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt).
 
                 ### Signature verification
 
@@ -143,6 +143,15 @@ paths:
                           error: "Unable to extract invoice data from receipt"
                           recovered_vat: 0
                           timestamp: "2024-08-22T15:45:00Z"
+                      conversionReverted:
+                        summary: Invoice reverted via credit note
+                        value:
+                          event: "receipt.conversion.reverted"
+                          receipt_id: "rcp_abc123def"
+                          status: "completed"
+                          error: ""
+                          recovered_vat: 0
+                          timestamp: "2024-08-22T16:10:00Z"
               responses:
                 "200":
                   description: Webhook received successfully
@@ -1567,6 +1576,7 @@ components:
           enum:
             - receipt.conversion.completed
             - receipt.conversion.failed
+            - receipt.conversion.reverted
           example: "receipt.conversion.completed"
         receipt_id:
           type: string
