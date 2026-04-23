@@ -6,6 +6,8 @@ All notable changes to the Recivu API will be documented in this file.
 
 ### Added
 
+- `POST /company/{id}/webhook-secret/rotate` endpoint for regenerating a company's `webhook_signing_secret`. Use when the original secret is lost or suspected of being compromised. Returns `409 Conflict` when the company has no `webhook_url` configured.
+- `webhook_signing_secret` is now also returned on `PUT /company/{id}` when the update first sets a `webhook_url` on a company that previously had none, closing the gap where partners who added their webhook after registration had no way to obtain a signing secret.
 - `receipt.conversion.reverted` webhook event: fired with `status: completed` when a credit note is successfully issued after a partner rejects a delivered receipt.
 - `type` field (`Live` or `Test`) on `POST /company`, defaulting to `Live` when omitted. Lets partners register a sandbox `Test` company alongside a `Live` one with the same VAT number without conflict. Also returned on `GET /company/{id}`.
 - End-to-end Test flow on `POST /receipt`. When the request `type` is `Test`, the receipt is not persisted and a signed `receipt.conversion.completed` webhook is fired to the target company's `webhook_url` (if configured) so partners can validate their signature verification and callback handling.

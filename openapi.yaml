@@ -535,6 +535,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
+  /company/{id}/webhook-secret/rotate:
+    post:
+      tags:
+        - Companies
+      summary: Rotate the webhook signing secret
+      security:
+        - apiKeyAuth: []
+      description: |
+        Generate a new `webhook_signing_secret` for the company, replacing any
+        previous value. Use this when the prior secret has been lost or is
+        suspected of being compromised. The company must have a `webhook_url`
+        configured — otherwise the request is rejected with `409 Conflict`.
+
+        The previous secret stops being valid the moment this endpoint
+        returns. Partners should deploy the new secret to their webhook
+        verifier before invoking rotation to avoid dropping in-flight
+        callbacks.
+      operationId: rotateCompanyWebhookSecret
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The company's unique ID
+          example: "co_1nj12iei3"
+      responses:
+        "200":
+          description: Webhook signing secret rotated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RotateWebhookSecretResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: webhook_url is not configured on this company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /employee:
     post:
       tags:
@@ -1357,6 +1414,40 @@ components:
           type: string
           description: ID of the updated company
           example: "co_1nj12iei3"
+        webhook_signing_secret:
+          type: string
+          description: |
+            Secret key for verifying webhook signatures. Returned **only** on
+            the update that first sets a `webhook_url` on a company that
+            previously had none. Subsequent updates, or updates that clear the
+            `webhook_url`, omit this field. To regenerate a lost secret,
+            use `POST /company/{id}/webhook-secret/rotate`.
+
+            Store this securely — it is shown only once.
+          example: "whsec_k7x9m2p4q8r1t5v3w6y0"
+
+    RotateWebhookSecretResponse:
+      type: object
+      required:
+        - status
+        - company_id
+        - webhook_signing_secret
+      properties:
+        status:
+          type: string
+          example: "success"
+        company_id:
+          type: string
+          description: ID of the company whose secret was rotated
+          example: "co_1nj12iei3"
+        webhook_signing_secret:
+          type: string
+          description: |
+            The newly-generated webhook signing secret. The previous secret
+            is invalidated immediately. Use this value to verify the
+            `x-recivu-signature` header on incoming webhook requests. Shown
+            only once — store it securely.
+          example: "whsec_k7x9m2p4q8r1t5v3w6y0"
 
     UpdateEmployeeRequest:
       type: object
