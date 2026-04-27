@@ -27,6 +27,10 @@ All notable changes to the Recivu API will be documented in this file.
 - `GetInvoiceStatusErrorResponse` schema (replaced by standard `ErrorResponse`)
 - `GetInvoiceFileErrorResponse` schema (replaced by standard `ErrorResponse`)
 
+### Fixed
+
+- `POST /company` no longer returns `409 Conflict` when re-registering a company whose previous record was soft-deleted via `DELETE /company/{id}`. A new company with a new `id` is created. Existing employees and receipts attached to the deleted company are not migrated.
+
 ## [2026-04-16]
 
 ### Added
