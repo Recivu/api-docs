@@ -4,6 +4,8 @@ All notable changes to the Recivu API will be documented in this file.
 
 ## [Unreleased]
 
+## [2026-04-27]
+
 ### Added
 
 - `POST /company/{id}/webhook-secret/rotate` endpoint for regenerating a company's `webhook_signing_secret`. Use when the original secret is lost or suspected of being compromised. Returns `409 Conflict` when the company has no `webhook_url` configured.
