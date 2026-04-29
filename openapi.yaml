@@ -382,10 +382,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/DuplicateCompanyResponse"
               examples:
-                duplicateVat:
-                  summary: Company VAT number already registered
+                duplicateOwnedVat:
+                  summary: VAT already registered by the requesting partner
+                  value:
+                    error_code: 409
+                    error_message: "Company with this VAT number already exists"
+                    company_id: "co_1nj12iei3"
+                duplicateUnownedVat:
+                  summary: VAT already registered by a different partner
                   value:
                     error_code: 409
                     error_message: "Company with this VAT number already exists"
@@ -1078,6 +1084,29 @@ components:
           type: string
           description: Human-readable error message
           example: "Invalid VAT number format"
+
+    DuplicateCompanyResponse:
+      type: object
+      required:
+        - error_code
+        - error_message
+      properties:
+        error_code:
+          type: integer
+          description: Error code
+          example: 409
+        error_message:
+          type: string
+          description: Human-readable error message
+          example: "Company with this VAT number already exists"
+        company_id:
+          type: string
+          description: |
+            Existing company id, returned only when the duplicate VAT number
+            is already registered by the requesting partner. Lets partners
+            recover the existing company id without an extra `GET` lookup.
+            Omitted when the duplicate belongs to a different partner.
+          example: "co_1nj12iei3"
 
     InternalErrorResponse:
       type: object
