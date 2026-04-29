@@ -1,14 +1,20 @@
 # Changelog
 
-All notable changes to the Recivu API will be documented in this file.
+All notable changes to the Recivu API are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the API follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). The current version is mirrored in `info.version` of `openapi.yaml`. Breaking changes are tagged **BREAKING** and only ship in a `MAJOR` bump — partners can pin to a `MAJOR` version line and expect no integration-breaking changes within it.
 
 ## [Unreleased]
+
+## [2.1.0] - 2026-04-29
 
 ### Fixed
 
 - `POST /company` `409 Conflict` response now includes `company_id` when the duplicate VAT number is already registered by the requesting partner, letting partners recover the existing company id without an extra `GET` lookup. The field is omitted when the duplicate belongs to a different partner.
 
-## [2026-04-27]
+## [2.0.0] - 2026-04-27
+
+> Versions before `2.0.0` were dated rather than numbered. The 2026-04-27 release shipped breaking changes (HTTP status code shifts, type coercion of monetary fields, schema removals) and is retroactively labelled `2.0.0`.
 
 ### Added
 
@@ -21,24 +27,28 @@ All notable changes to the Recivu API will be documented in this file.
 
 ### Changed
 
-- Monetary and quantity fields (`receipt_total`, `receipt_vat`, `product_total`, `product_vat`, `product_quantity`, `product_absolute_discount`, `product_percent_discount`, `invoice_total`) changed from `string` to `number` (float) to match implementation
-- `POST /company` success response changed from `200` to `201 Created`
-- `POST /employee` success response changed from `200` to `201 Created`
-- `PUT /employee/{id}` now accepts optional `company_id` field for employee reassignment between companies
-- `GET /receipts/{id}` 404 response now uses standard `ErrorResponse` schema
-- `GET /invoices_download/{id}` 404 response now uses standard `ErrorResponse` schema
+- **BREAKING:** Monetary and quantity fields (`receipt_total`, `receipt_vat`, `product_total`, `product_vat`, `product_quantity`, `product_absolute_discount`, `product_percent_discount`, `invoice_total`) changed from `string` to `number` (float) to match implementation.
+- **BREAKING:** `POST /company` success response changed from `200` to `201 Created`.
+- **BREAKING:** `POST /employee` success response changed from `200` to `201 Created`.
+- `PUT /employee/{id}` now accepts optional `company_id` field for employee reassignment between companies.
+- `GET /receipts/{id}` 404 response now uses standard `ErrorResponse` schema.
+- `GET /invoices_download/{id}` 404 response now uses standard `ErrorResponse` schema.
 
 ### Removed
 
-- `GetInvoiceStatusErrorResponse` schema (replaced by standard `ErrorResponse`)
-- `GetInvoiceFileErrorResponse` schema (replaced by standard `ErrorResponse`)
+- **BREAKING:** `GetInvoiceStatusErrorResponse` schema (replaced by standard `ErrorResponse`).
+- **BREAKING:** `GetInvoiceFileErrorResponse` schema (replaced by standard `ErrorResponse`).
 
 ### Fixed
 
 - `POST /company` no longer returns `409 Conflict` when re-registering a company whose previous record was soft-deleted via `DELETE /company/{id}`. A new company with a new `id` is created. Existing employees and receipts attached to the deleted company are not migrated.
 
-## [2026-04-16]
+## [1.1.0] - 2026-04-16
 
 ### Added
 
-- Webhook signature verification (`x-recivu-signature`) documentation
+- Webhook signature verification (`x-recivu-signature`) documentation.
+
+## [1.0.0]
+
+- Initial public release.
