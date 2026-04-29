@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 1.0.0
+  version: 2.1.0
   contact:
     name: Recivu
     url: https://recivu.it
