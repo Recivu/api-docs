@@ -4,6 +4,10 @@ All notable changes to the Recivu API will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `POST /company` `409 Conflict` response now includes `company_id` when the duplicate VAT number is already registered by the requesting partner, letting partners recover the existing company id without an extra `GET` lookup. The field is omitted when the duplicate belongs to a different partner.
+
 ## [2026-04-27]
 
 ### Added
