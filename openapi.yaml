@@ -1128,6 +1128,7 @@ components:
       required:
         - status
         - error
+        - receipt_image_url
       properties:
         status:
           type: string
@@ -1137,12 +1138,17 @@ components:
           type: string
           description: Description of the error
           example: ""
+        receipt_image_url:
+          type: string
+          description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
+          example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
 
     GetInvoiceStatusPendingResponse:
       type: object
       required:
         - status
         - error
+        - receipt_image_url
       properties:
         status:
           type: string
@@ -1152,6 +1158,10 @@ components:
           type: string
           description: Description of the error
           example: ""
+        receipt_image_url:
+          type: string
+          description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
+          example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
 
     TxType:
       type: string

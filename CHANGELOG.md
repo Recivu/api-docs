@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- `receipt_image_url` field on `GET /receipts/{id}` responses (both `200` and `202`). Returns the URL of the original receipt image uploaded with `POST /receipt`, or an empty string when no image was uploaded. In `Test` mode (`?type=Test`) a stub URL is returned.
+
 ## [2.1.0] - 2026-04-29
 
 ### Fixed
