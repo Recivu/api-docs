@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 2.2.0
+  version: 2.3.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -1310,6 +1310,15 @@ components:
           type: string
           description: Employee's last name
           example: "Appleseed"
+        email:
+          type: string
+          format: email
+          description: Employee's work email address. Optional for partner integrations.
+          example: "john.appleseed@acme.it"
+        phone_number:
+          type: string
+          description: Employee's phone number. Optional.
+          example: "+393331234567"
 
     CreateEmployeeResponse:
       type: object
@@ -1340,6 +1349,15 @@ components:
           type: string
           description: Employee's last name
           example: "Appleseed"
+        email:
+          type: string
+          format: email
+          description: Employee's work email address
+          example: "john.appleseed@acme.it"
+        phone_number:
+          type: string
+          description: Employee's phone number
+          example: "+393331234567"
 
     GetCompanyResponse:
       type: object

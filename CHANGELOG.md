@@ -6,8 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-05-20
+
 ### Added
 
+- Optional `email` and `phone_number` fields on `POST /employee` request body (`CreateEmployeeRequest`). Neither field is required for partner integrations; both are stored and returned in `GET /company/{id}` employee listings (`EmployeeSummary`).
 - `merchant_name` and `merchant_vat` fields on the `receipt.conversion.completed` webhook payload, giving partners the supplier ragione sociale and P.IVA for each recovered invoice.
 - `receipt.conversion.completed` webhook now fires for **Live** receipts at the moment the merchant confirms invoice emission (previously fired only for Test receipts).
 - `receipt_image_url` field on `GET /receipts/{id}` responses (both `200` and `202`). Returns the URL of the original receipt image uploaded with `POST /receipt`, or an empty string when no image was uploaded. In `Test` mode (`?type=Test`) a stub URL is returned.
