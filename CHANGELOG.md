@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-06-23
+
+### Added
+
+- `receipt.conversion.failed` webhook is now delivered in production. It fires when a receipt is archived — either by staff (e.g. illegible scontrino) or automatically as a duplicate — with the archive reason in the `error` field. Previously this event was documented but never sent.
+
+### Changed
+
+- `recovered_vat` on the `receipt.conversion.completed` webhook now reflects the actual IVA recovered from the receipt (previously always `0`). This includes the mock `completed` webhook fired in `Test` mode, which is now populated with the submitted `merchant_name`/`merchant_vat` and the `recovered_vat` from the request body's `receipt_vat`.
+
 ## [2.3.0] - 2026-05-20
 
 ### Added

@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 2.3.0
+  version: 2.4.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -33,7 +33,7 @@ paths:
 
         ### Test mode
 
-        When `type` is `Test`, the receipt is not persisted and no real conversion is performed — the endpoint immediately returns a `success` response with a freshly-generated `receipt_id`. If the target company has a `webhook_url` configured, Recivu also fires a single mock webhook for that `receipt_id` with `event: receipt.conversion.completed` and `status: completed`, signed with the company's `webhook_signing_secret` exactly like a live callback. This lets partners exercise the full happy-path flow (submit → webhook → status poll → PDF download) end-to-end without touching production data.
+        When `type` is `Test`, the receipt is not persisted and no real conversion is performed — the endpoint immediately returns a `success` response with a freshly-generated `receipt_id`. If the target company has a `webhook_url` configured, Recivu also fires a single mock webhook for that `receipt_id` with `event: receipt.conversion.completed` and `status: completed`, populated with the submitted `merchant_name`/`merchant_vat` and the `recovered_vat` taken from the request body's `receipt_vat`, signed with the company's `webhook_signing_secret` exactly like a live callback. This lets partners exercise the full happy-path flow (submit → webhook → status poll → PDF download) end-to-end without touching production data.
       operationId: createInvoice
       requestBody:
         required: true
@@ -88,7 +88,7 @@ paths:
             post:
               summary: Webhook notification for receipt status change
               description: |
-                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for three events: `receipt.conversion.completed` (invoice issued), `receipt.conversion.failed` (conversion could not complete), and `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt).
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for three events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible or a duplicate, with the reason in `error`), and `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt).
 
                 ### Signature verification
 
