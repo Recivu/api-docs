@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 2.4.0
+  version: 2.5.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -31,9 +31,11 @@ paths:
       description: |
         Request the conversion of a receipt into an invoice.
 
-        ### Test mode
+        ### Sandbox (test) mode
 
-        When `type` is `Test`, the receipt is not persisted and no real conversion is performed — the endpoint immediately returns a `success` response with a freshly-generated `receipt_id`. If the target company has a `webhook_url` configured, Recivu also fires a single mock webhook for that `receipt_id` with `event: receipt.conversion.completed` and `status: completed`, populated with the submitted `merchant_name`/`merchant_vat` and the `recovered_vat` taken from the request body's `receipt_vat`, signed with the company's `webhook_signing_secret` exactly like a live callback. This lets partners exercise the full happy-path flow (submit → webhook → status poll → PDF download) end-to-end without touching production data.
+        The environment is derived from your API key: a **test** key routes the request to the isolated sandbox (it is not persisted to production and no real conversion runs), a **live** key to production. The deprecated `type` body field is still accepted during the migration window but is ignored for environment-scoped keys.
+
+        With a test key, Recivu fires the webhook(s) for the company's configured `webhook_url`, signed with its `webhook_signing_secret` exactly like a live callback, so you can exercise your integration end-to-end without touching production data. The mock `completed` webhook is populated with the submitted `merchant_name`/`merchant_vat` and the `recovered_vat` taken from the request body's `receipt_vat`. Use the `sandbox_scenario` field (or the reserved `merchant_vat` sentinels) to choose the simulated outcome — `completed`, `failed`, `unknown_id`, `double_send`, or `storno` — and `payload_variant` to choose the payload shape. To replay events or drive lifecycle transitions out-of-band on an existing sandbox receipt, use `POST /sandbox/receipts/{id}/trigger`.
       operationId: createInvoice
       requestBody:
         required: true
@@ -155,6 +157,66 @@ paths:
               responses:
                 "200":
                   description: Webhook received successfully
+  /sandbox/receipts/{id}/trigger:
+    post:
+      tags:
+        - Receipts
+      summary: Trigger a sandbox webhook event (test only)
+      security:
+        - apiKeyAuth: []
+      description: |
+        **Sandbox only** — requires a **test** API key (`403` otherwise). Fires a
+        webhook event for an existing sandbox receipt out-of-band, so you can
+        replay deliveries and drive lifecycle transitions (e.g. a
+        `completed` → `reverted` storno, or a double send via `count: 2`) from
+        your own tooling without re-submitting a receipt. Delivery is
+        asynchronous and every attempt is recorded for observability.
+      operationId: triggerSandboxWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The sandbox receipt id to fire the event for.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SandboxTriggerRequest"
+      responses:
+        "202":
+          description: Trigger accepted; webhook delivery happens asynchronously.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "accepted"
+                  receipt_id:
+                    type: string
+                    example: "rcp_abc123def"
+                  event:
+                    type: string
+                    example: "receipt.conversion.completed"
+                  count:
+                    type: integer
+                    example: 1
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sandbox endpoints require a test API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /receipts/{id}:
     get:
       tags:
@@ -881,7 +943,6 @@ components:
       type: object
       required:
         - receipt_image
-        - type
         - employee_id
         - company_id
       properties:
@@ -896,7 +957,16 @@ components:
         receipt:
           $ref: "#/components/schemas/ReceiptRequest"
         type:
-          $ref: "#/components/schemas/TxType"
+          allOf:
+            - $ref: "#/components/schemas/TxType"
+          deprecated: true
+          description: |
+            **Deprecated.** The environment (Test vs Live) is now derived from
+            your API key: a **test** key routes the request to the sandbox, a
+            **live** key to production. For an environment-scoped key this field
+            is ignored; it is accepted only for backward compatibility during a
+            30-day deprecation window and will be removed in a future `MAJOR`
+            version. New integrations should not send it.
         employee_id:
           type: string
           description: Shared ID of the employee associated with the receipt
@@ -916,6 +986,79 @@ components:
             instead of the company-registered webhook_url. Must be HTTPS.
             Omit or send an empty string to use the company-level URL.
           example: "https://partner.example.com/webhooks/recivu/override"
+        sandbox_scenario:
+          type: string
+          description: |
+            **Sandbox only** (test API key). Selects which webhook outcome the
+            sandbox simulates for this submission, so you can exercise every
+            integration path deterministically. Ignored for live keys.
+            - `completed` (default) — fires `receipt.conversion.completed`.
+            - `failed` — fires `receipt.conversion.failed`.
+            - `unknown_id` — fires `completed` for a receipt id you never
+              registered, to test your handling of unrecognised ids.
+            - `double_send` — fires the same `completed` webhook twice.
+            - `storno` — fires `completed`, then `receipt.conversion.reverted`
+              after a short delay (credit-note transition).
+            As an alternative for clients that cannot set this field, the
+            reserved `merchant_vat` sentinels `IT00000000002` (failed),
+            `IT00000000003` (unknown_id), `IT00000000004` (double_send) and
+            `IT00000000005` (storno) select the same scenarios.
+          enum:
+            - completed
+            - failed
+            - unknown_id
+            - double_send
+            - storno
+          example: "completed"
+        payload_variant:
+          type: string
+          description: |
+            **Sandbox only** (test API key). Selects the `completed` webhook
+            payload shape: `current` (today's shape) or `expected` (the
+            forthcoming agreed shape, which carries a `schema_version`).
+            Defaults to `current`.
+          enum:
+            - current
+            - expected
+          example: "current"
+
+    SandboxTriggerRequest:
+      type: object
+      required:
+        - company_id
+        - event
+      properties:
+        company_id:
+          type: string
+          description: The sandbox company whose webhook configuration to use.
+          example: "co_1nj12iei3"
+        event:
+          type: string
+          enum:
+            - completed
+            - failed
+            - reverted
+          description: Which webhook event to fire.
+          example: "completed"
+        count:
+          type: integer
+          description: |
+            How many times to fire the event (1–5). Use 2 to simulate a double
+            send. Defaults to 1.
+          example: 1
+        webhook_url:
+          type: string
+          format: uri
+          description: |
+            Optional override of the destination URL; otherwise the company's
+            registered webhook_url is used.
+        payload_variant:
+          type: string
+          enum:
+            - current
+            - expected
+          description: For `completed`, selects the payload shape. Defaults to `current`.
+          example: "current"
 
     ReceiptRequest:
       type: object
@@ -1759,6 +1902,13 @@ components:
           type: string
           description: P.IVA (VAT number) of the merchant. Present on `receipt.conversion.completed` events.
           example: "IT98765432109"
+        schema_version:
+          type: string
+          description: |
+            Present only on the sandbox `expected` payload variant (see
+            `payload_variant` on `POST /receipt`), identifying the forthcoming
+            payload shape. Omitted on the current shape.
+          example: "2"
 
   examples:
     CreateInvoiceRequestExample:

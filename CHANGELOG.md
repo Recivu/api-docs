@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-06-30
+
+### Added
+
+- Sandbox scenario engine on `POST /receipt` (test API key): optional `sandbox_scenario` field (`completed`, `failed`, `unknown_id`, `double_send`, `storno`) to deterministically choose the simulated webhook outcome, plus reserved `merchant_vat` sentinels (`IT0000000000{2..5}`) for clients that cannot set the field.
+- Optional `payload_variant` field on `POST /receipt` (`current` | `expected`) selecting the `receipt.conversion.completed` payload shape; the `expected` variant carries a new `schema_version` field on `WebhookPayload`.
+- `POST /sandbox/receipts/{id}/trigger` endpoint (test API key only) to fire a webhook event (`completed` | `failed` | `reverted`, with an optional `count` for double-send) for an existing sandbox receipt out-of-band — for replays and lifecycle transitions such as storno.
+
+### Changed
+
+- The request environment (Test vs Live) is now derived from the API key — a test key routes to the sandbox, a live key to production. The `type` field on `POST /receipt` is **deprecated**: it is still accepted during a 30-day partner-notice window but ignored for environment-scoped keys, and will be removed in a future `MAJOR` version.
+
 ## [2.4.0] - 2026-06-23
 
 ### Added
