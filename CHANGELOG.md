@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-01
+
+### Changed
+
+- **BREAKING:** Test (sandbox) submissions to `POST /receipt` no longer fire any webhook automatically. A test receipt is persisted to the sandbox, but the `receipt.conversion.completed` (and other) callbacks are now driven explicitly from the partner portal (or directly via `POST /sandbox/receipts/{id}/trigger`). Partners that relied on a webhook arriving on test submission must switch to triggering events themselves.
+- Sandbox `receipt.conversion.completed` callbacks now always carry mock `merchant_name`, `merchant_vat`, and `recovered_vat` values (echoing the submitted receipt's stored fields where available, otherwise hardcoded placeholders), so partners can validate handling of those fields end-to-end.
+
+### Removed
+
+- **BREAKING:** Removed the `sandbox_scenario` field and the reserved `merchant_vat` scenario sentinels (`IT0000000000{2..5}`) from `POST /receipt`. Sandbox outcomes are now selected per trigger via `POST /sandbox/receipts/{id}/trigger` (`event`: `completed` | `failed` | `reverted`, with an optional `count`).
+- **BREAKING:** Removed the `payload_variant` field from `POST /receipt`. Payload-shape selection remains available on `POST /sandbox/receipts/{id}/trigger`.
+
 ## [2.5.0] - 2026-06-30
 
 ### Added
