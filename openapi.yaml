@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 2.5.0
+  version: 3.0.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -35,7 +35,7 @@ paths:
 
         The environment is derived from your API key: a **test** key routes the request to the isolated sandbox (it is not persisted to production and no real conversion runs), a **live** key to production. The deprecated `type` body field is still accepted during the migration window but is ignored for environment-scoped keys.
 
-        With a test key, Recivu fires the webhook(s) for the company's configured `webhook_url`, signed with its `webhook_signing_secret` exactly like a live callback, so you can exercise your integration end-to-end without touching production data. The mock `completed` webhook is populated with the submitted `merchant_name`/`merchant_vat` and the `recovered_vat` taken from the request body's `receipt_vat`. Use the `sandbox_scenario` field (or the reserved `merchant_vat` sentinels) to choose the simulated outcome — `completed`, `failed`, `unknown_id`, `double_send`, or `storno` — and `payload_variant` to choose the payload shape. To replay events or drive lifecycle transitions out-of-band on an existing sandbox receipt, use `POST /sandbox/receipts/{id}/trigger`.
+        With a test key the receipt is persisted to the isolated sandbox but **no webhook is fired on submission**. You drive the webhook(s) yourself from the partner portal (or directly via `POST /sandbox/receipts/{id}/trigger`), which delivers the signed callback to the company's configured `webhook_url` — exactly like a live callback — so you can exercise your integration end-to-end without touching production data. Choose the simulated outcome (`completed`, `failed`, `reverted`) per trigger. Sandbox `receipt.conversion.completed` callbacks always carry mock `merchant_name`, `merchant_vat`, and `recovered_vat` values — echoing the sandbox receipt's stored fields where available, otherwise hardcoded placeholders.
       operationId: createInvoice
       requestBody:
         required: true
@@ -136,6 +136,8 @@ paths:
                           error: ""
                           recovered_vat: 3.41
                           timestamp: "2024-08-22T15:45:00Z"
+                          merchant_name: "Supermarket ABC S.r.l."
+                          merchant_vat: "IT98765432109"
                       conversionFailed:
                         summary: Conversion failed
                         value:
@@ -986,41 +988,6 @@ components:
             instead of the company-registered webhook_url. Must be HTTPS.
             Omit or send an empty string to use the company-level URL.
           example: "https://partner.example.com/webhooks/recivu/override"
-        sandbox_scenario:
-          type: string
-          description: |
-            **Sandbox only** (test API key). Selects which webhook outcome the
-            sandbox simulates for this submission, so you can exercise every
-            integration path deterministically. Ignored for live keys.
-            - `completed` (default) — fires `receipt.conversion.completed`.
-            - `failed` — fires `receipt.conversion.failed`.
-            - `unknown_id` — fires `completed` for a receipt id you never
-              registered, to test your handling of unrecognised ids.
-            - `double_send` — fires the same `completed` webhook twice.
-            - `storno` — fires `completed`, then `receipt.conversion.reverted`
-              after a short delay (credit-note transition).
-            As an alternative for clients that cannot set this field, the
-            reserved `merchant_vat` sentinels `IT00000000002` (failed),
-            `IT00000000003` (unknown_id), `IT00000000004` (double_send) and
-            `IT00000000005` (storno) select the same scenarios.
-          enum:
-            - completed
-            - failed
-            - unknown_id
-            - double_send
-            - storno
-          example: "completed"
-        payload_variant:
-          type: string
-          description: |
-            **Sandbox only** (test API key). Selects the `completed` webhook
-            payload shape: `current` (today's shape) or `expected` (the
-            forthcoming agreed shape, which carries a `schema_version`).
-            Defaults to `current`.
-          enum:
-            - current
-            - expected
-          example: "current"
 
     SandboxTriggerRequest:
       type: object
@@ -1906,8 +1873,9 @@ components:
           type: string
           description: |
             Present only on the sandbox `expected` payload variant (see
-            `payload_variant` on `POST /receipt`), identifying the forthcoming
-            payload shape. Omitted on the current shape.
+            `payload_variant` on `POST /sandbox/receipts/{id}/trigger`),
+            identifying the forthcoming payload shape. Omitted on the current
+            shape.
           example: "2"
 
   examples:
