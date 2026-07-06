@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- New merchant-facing Invoice API for issuing an electronic invoice directly from a receipt image:
+  - `POST /invoice` — submit a receipt image (base64) plus the customer's details and request issuance of an electronic invoice to SdI. Issuance is asynchronous: returns `202 Accepted` with an `invoice_id`. Supports an `Idempotency-Key` header for safe retries; returns `409` for a synchronously-detectable duplicate and `422` for a fiscal-rule violation (e.g. emission deadline exceeded).
+  - `GET /invoices/{id}` — retrieve the invoice status and SdI lifecycle. The `receipt_reference` fields (`merchant_vat`, `rt_number`, `receipt_number`, `receipt_date_time`) are OCR-derived and appear here once OCR completes; a duplicate discovered after OCR surfaces as `status: duplicate`.
+  - `GET /invoices/{id}/download` — download the invoice (PDF by default, `?format=xml` for the SdI XML).
+- New schemas: `IssueInvoiceRequest`, `Customer`, `Address`, `TransmissionChannel`, `Contacts`, `ReceiptReference`, `InvoiceAccepted`, `InvoiceStatus`, `DuplicateInvoiceResponse`.
+
 ## [3.0.0] - 2026-07-01
 
 ### Changed

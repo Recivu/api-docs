@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 3.0.0
+  version: 3.1.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -19,6 +19,8 @@ tags:
   - name: Employees
   - name: Reports
     description: "Endpoints for retrieving activity reports"
+  - name: Invoices
+    description: "Endpoints for merchant-facing invoice issuance from a receipt image"
 
 paths:
   /receipt:
@@ -934,6 +936,144 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
+  /invoice:
+    post:
+      tags: [Invoices]
+      operationId: issueInvoice
+      summary: Request issuance of an invoice from a receipt
+      description: >
+        Turns a receipt (Italian commercial document, scontrino) into an
+        electronic invoice made out to the end customer (cessionario/committente)
+        and transmits it to the Interchange System (SdI). The environment
+        (test/production) is determined by the API key. Issuance is
+        **asynchronous**: the request returns `202 Accepted` with an
+        `invoice_id` to poll via `GET /invoices/{id}` or to receive via webhook.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >
+            Idempotency key for network retries. The same key returns the same
+            202 response without creating a new invoice.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueInvoiceRequest"
+      responses:
+        "202":
+          description: Request accepted for issuance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceAccepted"
+        "400":
+          description: Malformed body or missing required field.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            Duplicate: the receipt has already been invoiced. Returned only when
+            the duplicate is synchronously detectable; duplicates discovered
+            after OCR instead surface as `status: duplicate` on
+            `GET /invoices/{id}`. The body carries the `invoice_id` of the
+            existing invoice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateInvoiceResponse"
+        "422":
+          description: >
+            Fiscal rule not satisfied (emission deadline exceeded, invalid
+            customer delivery channel, non-issuable content).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}:
+    get:
+      tags: [Invoices]
+      operationId: getInvoiceStatus
+      summary: Invoice status
+      description: Retrieves the current status and SdI lifecycle of an invoice.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceStatus"
+        "404":
+          description: Unknown identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/download:
+    get:
+      tags: [Invoices]
+      operationId: downloadInvoice
+      summary: Download the invoice
+      description: >
+        Downloads the generated invoice. Defaults to PDF; use `?format=xml` for
+        the XML transmitted to SdI.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pdf, xml]
+            default: pdf
+      responses:
+        "200":
+          description: Invoice file.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/xml:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Unknown identifier, or document not yet available.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   securitySchemes:
     apiKeyAuth:
@@ -941,6 +1081,182 @@ components:
       in: header
       name: x-api-key
   schemas:
+    IssueInvoiceRequest:
+      type: object
+      required: [receipt_image, customer]
+      properties:
+        receipt_image:
+          type: string
+          description: >
+            Base64-encoded receipt image. The sole source of the invoice
+            content: data is extracted via OCR.
+        customer:
+          $ref: "#/components/schemas/Customer"
+        webhook_url:
+          type: string
+          format: uri
+          description: Optional HTTPS URL for status notifications for this invoice.
+          example: https://your-system.example/hooks/invoice
+    Customer:
+      type: object
+      description: >
+        The customer the invoice is made out to (cessionario/committente).
+        Must contain either `vat_number` or `tax_code`.
+      required: [address, transmission_channel]
+      properties:
+        business_name:
+          type: string
+          description: Legal name (for entities other than a natural person).
+          example: ACME S.r.l.
+        first_name:
+          type: string
+          description: First name (natural person, as an alternative to business_name).
+        last_name:
+          type: string
+          description: Last name (natural person, as an alternative to business_name).
+        vat_number:
+          type: string
+          description: Customer VAT number (with country prefix).
+          example: IT09876543210
+        tax_code:
+          type: string
+          description: Customer tax code (as an alternative to vat_number).
+          example: RSSMRA80A01H501U
+        address:
+          $ref: "#/components/schemas/Address"
+        transmission_channel:
+          $ref: "#/components/schemas/TransmissionChannel"
+        contacts:
+          $ref: "#/components/schemas/Contacts"
+    Address:
+      type: object
+      properties:
+        address:
+          type: string
+          example: "Via Roma 1"
+        postal_code:
+          type: string
+          example: "20100"
+        city:
+          type: string
+          example: Milano
+        province:
+          type: string
+          example: MI
+        country:
+          type: string
+          example: IT
+    TransmissionChannel:
+      type: object
+      description: >
+        SdI delivery channel. Provide `sdi_code` (Recipient Code) or
+        `pec_address`.
+      properties:
+        sdi_code:
+          type: string
+          description: 7-character Recipient Code.
+          example: "0000000"
+        pec_address:
+          type: string
+          format: email
+          example: acme@pec.it
+    Contacts:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: billing@acme.it
+    ReceiptReference:
+      type: object
+      description: >
+        Receipt identity fields. These are OCR-derived, so they may be absent
+        on the initial 202 and are populated on `GET /invoices/{id}` once OCR
+        completes.
+      properties:
+        merchant_vat:
+          type: string
+          example: IT01234567890
+        rt_number:
+          type: string
+          example: "99RT001234"
+        receipt_number:
+          type: string
+          example: "0042-0007"
+        receipt_date_time:
+          type: string
+          format: date-time
+          example: "2026-07-03T14:30:00Z"
+    InvoiceAccepted:
+      type: object
+      properties:
+        invoice_id:
+          type: string
+          example: 8f3a1c2e-0b6d-4a1e-9f2b-1a2b3c4d5e6f
+        status:
+          type: string
+          enum: [processing]
+          example: processing
+        receipt_reference:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReceiptReference"
+          description: OCR-derived; typically absent on the initial 202.
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-07-03T14:31:02Z"
+    InvoiceStatus:
+      type: object
+      properties:
+        invoice_id:
+          type: string
+          example: 8f3a1c2e-0b6d-4a1e-9f2b-1a2b3c4d5e6f
+        status:
+          type: string
+          description: >
+            `duplicate` indicates the receipt was found to be already invoiced
+            after OCR; the pre-existing invoice is referenced via
+            `receipt_reference`/status lookup.
+          enum: [processing, failed, duplicate, pending, issued, delivered, rejected]
+          example: issued
+        invoice_number:
+          type: string
+          nullable: true
+          description: Progressive invoice number, assigned at issuance.
+          example: "RCV000123"
+        sdi_status:
+          type: string
+          nullable: true
+          description: SdI status (e.g. consegnata, scartata, mancata_consegna).
+          example: consegnata
+        rejection_reason:
+          type: string
+          nullable: true
+          description: Set on SdI rejection.
+        failure_reason:
+          type: string
+          nullable: true
+          description: Set when the request failed a fiscal validation rule.
+        receipt_reference:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ReceiptReference"
+    DuplicateInvoiceResponse:
+      type: object
+      properties:
+        error_code:
+          type: integer
+          example: 409
+        error_message:
+          type: string
+          example: "Receipt already invoiced"
+        invoice_id:
+          type: string
+          description: Identifier of the invoice already issued for this receipt.
+          example: 8f3a1c2e-0b6d-4a1e-9f2b-1a2b3c4d5e6f
     CreateInvoiceRequest:
       type: object
       required:
