@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 3.0.0
+  version: 3.1.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -90,7 +90,7 @@ paths:
             post:
               summary: Webhook notification for receipt status change
               description: |
-                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for three events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible or a duplicate, with the reason in `error`), and `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt).
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for four events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible, with the reason in `error`), `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt), and `receipt.conversion.duplicate` (the submitted receipt matched an already-converted one — carries the **original** receipt's `receipt_id`, `merchant_name`, and `merchant_vat`; delivered at most once, and replacing the `failed` event previously used for duplicates).
 
                 ### Signature verification
 
@@ -1005,13 +1005,15 @@ components:
             - completed
             - failed
             - reverted
-          description: Which webhook event to fire.
+            - duplicate
+          description: Which webhook event to fire. `duplicate` fires a single `receipt.conversion.duplicate` event and ignores `count` (a duplicate is always a single notification).
           example: "completed"
         count:
           type: integer
           description: |
             How many times to fire the event (1–5). Use 2 to simulate a double
-            send. Defaults to 1.
+            send. Defaults to 1. Ignored for the `duplicate` event, which always
+            fires exactly once.
           example: 1
         webhook_url:
           type: string
@@ -1179,6 +1181,14 @@ components:
           description: Status of the invoice creation
           enum: [success, error, pending]
           example: "success"
+        duplicate:
+          type: boolean
+          description: True when this receipt matched an already-submitted receipt. When true, `receipt_id` and `original_receipt_id` both reference the original canonical receipt and the resend was a safe no-op (no new receipt was created).
+          example: false
+        original_receipt_id:
+          type: string
+          description: The id of the original canonical receipt this submission duplicated. Present only when `duplicate` is true.
+          example: "rcp_abc123def"
 
     ErrorResponse:
       type: object
@@ -1830,11 +1840,16 @@ components:
       properties:
         event:
           type: string
-          description: The type of event that triggered the webhook
+          description: |
+            The type of event that triggered the webhook. `receipt.conversion.duplicate`
+            is delivered at most once when a resubmission matched an already-converted
+            receipt; its `receipt_id`, `merchant_name`, and `merchant_vat` reference the
+            **original** receipt.
           enum:
             - receipt.conversion.completed
             - receipt.conversion.failed
             - receipt.conversion.reverted
+            - receipt.conversion.duplicate
           example: "receipt.conversion.completed"
         receipt_id:
           type: string
@@ -1846,6 +1861,7 @@ components:
           enum:
             - completed
             - failed
+            - duplicate
           example: "completed"
         error:
           type: string
@@ -1863,11 +1879,11 @@ components:
           example: "2024-08-22T15:45:00Z"
         merchant_name:
           type: string
-          description: Ragione sociale of the merchant that issued the invoice. Present on `receipt.conversion.completed` events.
+          description: Ragione sociale of the merchant that issued the invoice. Present on `receipt.conversion.completed` and `receipt.conversion.duplicate` events.
           example: "Supermarket ABC S.r.l."
         merchant_vat:
           type: string
-          description: P.IVA (VAT number) of the merchant. Present on `receipt.conversion.completed` events.
+          description: P.IVA (VAT number) of the merchant. Present on `receipt.conversion.completed` and `receipt.conversion.duplicate` events.
           example: "IT98765432109"
         schema_version:
           type: string
