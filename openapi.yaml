@@ -226,7 +226,14 @@ paths:
       summary: Request the status related to a conversion request
       security:
         - apiKeyAuth: []
-      description: Request an update on the status of a receipt conversion request
+      description: |
+        Request an update on the status of a receipt conversion request.
+
+        The response carries the conversion outcome at parity with the webhook
+        payloads (`machine_status`, `recovered_vat`, `merchant_name`,
+        `merchant_vat`), so it can be used to reconstruct the outcome of a
+        conversion whose webhook was missed. Receipts are scoped to the partner
+        owning the API key: requesting another partner's receipt id returns 404.
       operationId: requestInvoice
       parameters:
         - name: id
@@ -1249,10 +1256,11 @@ components:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
-          description: Status of the receipt conversion request
+          description: Human-readable status of the receipt conversion request
           example: "Invoice correctly sent"
         error:
           type: string
@@ -1262,6 +1270,21 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        recovered_vat:
+          type: number
+          format: double
+          description: The recovered VAT (IVA) amount for the converted receipt, matching the `recovered_vat` field of the `receipt.conversion.completed` webhook. Present only while the conversion stands (`machine_status` = `completed`); omitted for `reverted` receipts since the credit note undid the recovery.
+          example: 4.62
+        merchant_name:
+          type: string
+          description: Business name of the merchant that issued the receipt, at parity with the webhook payloads. Omitted when not yet resolved.
+          example: "Bar Roma S.r.l."
+        merchant_vat:
+          type: string
+          description: VAT number (P.IVA) of the merchant that issued the receipt, at parity with the webhook payloads. Omitted when not yet resolved.
+          example: "IT01234567890"
 
     GetInvoiceStatusPendingResponse:
       type: object
@@ -1269,10 +1292,11 @@ components:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
-          description: Status of the receipt conversion request
+          description: Human-readable status of the receipt conversion request
           example: "Receipt correctly received but not yet converted"
         error:
           type: string
@@ -1282,6 +1306,39 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        merchant_name:
+          type: string
+          description: Business name of the merchant that issued the receipt, at parity with the webhook payloads. Omitted when not yet resolved.
+          example: "Bar Roma S.r.l."
+        merchant_vat:
+          type: string
+          description: VAT number (P.IVA) of the merchant that issued the receipt, at parity with the webhook payloads. Omitted when not yet resolved.
+          example: "IT01234567890"
+
+    ReceiptMachineStatus:
+      type: string
+      description: |
+        Machine-readable conversion outcome, at parity with the webhook event
+        vocabulary — use `GET /receipts/{id}` with this field to reconstruct
+        the outcome of a conversion whose webhook you missed.
+
+        - `completed` — the invoice was emitted (the receipt also carries
+          `recovered_vat`, `merchant_name`, `merchant_vat`)
+        - `pending` — still in the validation/processing pipeline
+        - `failed` — terminal validation failure
+        - `duplicate` — the submission matched an already-stored receipt and
+          was archived without conversion
+        - `reverted` — an invoice was emitted, then annulled by a credit note
+          following rejection (see `receipt.conversion.reverted`)
+      enum:
+        - completed
+        - pending
+        - failed
+        - duplicate
+        - reverted
+      example: "completed"
 
     TxType:
       type: string
