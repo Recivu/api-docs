@@ -6,11 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-07-09
+
 ### Added
 
 - `POST /receipt` is now idempotent for duplicate fiscal receipts: resubmitting a receipt with the same `merchant_vat` + `rt_number` + `receipt_number` + `receipt_date_time` returns `200` with the original `receipt_id`, a new `original_receipt_id`, and `duplicate: true` — instead of creating a second receipt. No new fields are required from clients.
 - New `receipt.conversion.duplicate` webhook event, delivered at most once when a duplicate is detected, carrying the original receipt's id and merchant data. Previously a duplicate surfaced as `receipt.conversion.failed`.
 - New `duplicate` event value on `POST /sandbox/receipts/{id}/trigger` (test API key) so partners can simulate the duplicate webhook in the sandbox; it fires exactly once and ignores `count`.
+- `GET /receipts/{id}` now returns webhook-parity fields so a missed webhook can be recovered by polling: `machine_status` (`completed` | `pending` | `failed` | `duplicate` | `reverted`), `merchant_name`, `merchant_vat`, and `recovered_vat` (present only while the conversion stands). The endpoint is scoped to the partner that owns the API key.
+
+### Fixed
+
+- `GET /receipts/{id}` now determines test vs live from the **API key** instead of a `?type=Test` query parameter. A receipt submitted with a test key (stored in the sandbox) is now retrievable by polling — previously such a call returned `404` — and the endpoint returns the receipt's real status rather than a mock. The `?type=Test` query parameter is deprecated and ignored.
 
 ## [3.0.0] - 2026-07-01
 

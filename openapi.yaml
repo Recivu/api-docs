@@ -226,7 +226,20 @@ paths:
       summary: Request the status related to a conversion request
       security:
         - apiKeyAuth: []
-      description: Request an update on the status of a receipt conversion request
+      description: |
+        Poll the current status of a receipt conversion request. Returns the
+        human-readable `status`, the original `receipt_image_url`, and — at
+        parity with the webhook payloads — the machine-readable `machine_status`
+        plus `merchant_name`, `merchant_vat`, and (while a conversion stands)
+        `recovered_vat`, so a missed webhook can be recovered by polling.
+
+        Receipts are scoped to the partner that owns the API key; another
+        partner's receipt id returns `404`.
+
+        **Test vs live is determined by the API key** — a test key reads its
+        sandbox receipt (which stays `pending` until you drive an outcome via
+        `POST /sandbox/receipts/{id}/trigger`), a live key reads production. No
+        query parameter is required.
       operationId: requestInvoice
       parameters:
         - name: id
@@ -236,14 +249,6 @@ paths:
             type: string
           description: The receipt ID issued at request time
           example: "rcp_abc123def"
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - Test
-          description: When set to "Test", returns a mock completed response without touching the database. Any id value can be used in test mode.
       responses:
         "200":
           description: Invoice found and retrieved successfully
@@ -1243,12 +1248,29 @@ components:
           description: Human-readable error message
           example: "Internal server error"
 
+    ReceiptMachineStatus:
+      type: string
+      description: |
+        Machine-readable conversion outcome, matching the webhook event
+        vocabulary. `pending` covers everything still in the
+        validation/OCR/revision pipeline (a freshly submitted receipt, and any
+        receipt submitted with a test key until you drive an outcome in the
+        sandbox).
+      enum:
+        - completed
+        - pending
+        - failed
+        - duplicate
+        - reverted
+      example: "completed"
+
     GetInvoiceStatusResponse:
       type: object
       required:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
@@ -1262,6 +1284,21 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        recovered_vat:
+          type: number
+          format: float
+          description: VAT (IVA) recovered from the receipt, in EUR. Present only while the conversion stands (omitted once `reverted`).
+          example: 4.62
+        merchant_name:
+          type: string
+          description: Ragione sociale of the merchant. Present at webhook parity.
+          example: "Supermarket ABC S.r.l."
+        merchant_vat:
+          type: string
+          description: P.IVA (VAT number) of the merchant. Present at webhook parity.
+          example: "IT98765432109"
 
     GetInvoiceStatusPendingResponse:
       type: object
@@ -1269,6 +1306,7 @@ components:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
@@ -1282,6 +1320,16 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        merchant_name:
+          type: string
+          description: Ragione sociale of the merchant. Present at webhook parity once known.
+          example: "Supermarket ABC S.r.l."
+        merchant_vat:
+          type: string
+          description: P.IVA (VAT number) of the merchant. Present at webhook parity once known.
+          example: "IT98765432109"
 
     TxType:
       type: string
