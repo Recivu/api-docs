@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-07-21
+
+### Added
+
+- `POST /employee` now supports an optional `Idempotency-Key` header (max 255 characters) for safe retries and concurrent submissions: requests carrying the same key create the employee only once. Replays return the original `employee_id` in the same `201` response, with a new optional `replayed: true` field. Callers that don't send the header see no change in behavior.
+- `CreateEmployeeResponse` now documents the `status` field ("success") that the endpoint has always returned, alongside the new optional `replayed` boolean.
+
 ## [3.1.0] - 2026-07-09
 
 ### Added

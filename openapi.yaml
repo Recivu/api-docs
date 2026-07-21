@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 3.1.0
+  version: 3.2.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -674,8 +674,28 @@ paths:
       summary: Add a new employee
       security:
         - apiKeyAuth: []
-      description: Add a new employee to the Recivu ecosystem
+      description: |
+        Add a new employee to the Recivu ecosystem.
+
+        Supports an optional `Idempotency-Key` header for safe retries and
+        concurrent submissions: requests carrying the same key (per API key
+        owner) create the employee only once — subsequent calls return the
+        original `employee_id` in the same `201` response, with
+        `replayed: true`. Requests without the header behave exactly as
+        before.
       operationId: createEmployee
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >
+            Idempotency key for retries. The same key returns the same 201
+            response (original employee_id, `replayed: true`) without
+            creating a new employee. Use a unique value (e.g. a UUID) per
+            logical employee creation and reuse it across retries.
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -1497,6 +1517,18 @@ components:
           type: string
           description: Unique employee identifier
           example: "emp_abc123def"
+        status:
+          type: string
+          description: Always "success" on a 201 response
+          example: "success"
+        replayed:
+          type: boolean
+          description: >
+            Present and true only when the request carried an
+            Idempotency-Key already used by a previous successful creation:
+            employee_id is the original employee's id and no new employee
+            was created. Absent on a fresh creation.
+          example: true
 
     EmployeeSummary:
       type: object
