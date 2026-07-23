@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 3.2.0
+  version: 3.3.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -17,6 +17,8 @@ tags:
   - name: Companies
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
+  - name: Merchants
+    description: "Endpoints for registering and checking merchants that have delegated Recivu to issue electronic invoices on their behalf"
   - name: Reports
     description: "Endpoints for retrieving activity reports"
 
@@ -833,6 +835,139 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
+  /merchant:
+    post:
+      tags:
+        - Merchants
+      summary: Register a merchant that has delegated Recivu
+      security:
+        - apiKeyAuth: []
+      description: |
+        Registers a merchant that has signed a delega authorizing Recivu to
+        issue electronic invoices on their behalf, attributing the delegation
+        to the calling partner. The API call itself is the assertion that the
+        delega has been collected — no document upload is required.
+
+        The registration is idempotent per merchant: once a merchant is
+        delegated, further attempts return `409` (with `delegated_at` only
+        when the existing delegation belongs to the calling partner).
+
+        Test API keys register the delegation in the sandbox only — no real
+        merchant is affected.
+      operationId: registerMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMerchantRequest"
+      responses:
+        "201":
+          description: Merchant delegation registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterMerchantResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Merchant already delegated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateMerchantResponse"
+              examples:
+                alreadyDelegatedByYou:
+                  summary: Delegation already registered by the requesting partner
+                  value:
+                    error_code: 409
+                    error_message: "Merchant already delegated"
+                    delegated_at: "2026-07-23T10:00:00Z"
+                alreadyDelegatedElsewhere:
+                  summary: Merchant already delegated, not through the requesting partner
+                  value:
+                    error_code: 409
+                    error_message: "Merchant already delegated"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+  /merchant/{vat_number}:
+    get:
+      tags:
+        - Merchants
+      summary: Check whether a merchant has delegated Recivu
+      security:
+        - apiKeyAuth: []
+      description: |
+        Returns the delegation status for the merchant identified by VAT
+        number. Always `200` for a syntactically valid VAT, whether or not
+        the merchant is known to Recivu — use it to pre-check a merchant
+        before registering. `delegated_at` is included only when the active
+        delegation was registered by the calling partner.
+      operationId: getMerchant
+      parameters:
+        - name: vat_number
+          in: path
+          required: true
+          description: The merchant's Italian VAT number, with or without the `IT` prefix.
+          schema:
+            type: string
+          example: "IT01234567890"
+      responses:
+        "200":
+          description: Delegation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetMerchantResponse"
+              examples:
+                delegatedByYou:
+                  summary: Delegated through the requesting partner
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: true
+                    delegated_at: "2026-07-23T10:00:00Z"
+                delegatedElsewhere:
+                  summary: Delegated, but not through the requesting partner
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: true
+                notDelegated:
+                  summary: Not delegated
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: false
+        "400":
+          description: Invalid VAT number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /reports/receipts:
     get:
       tags:
@@ -1252,6 +1387,126 @@ components:
             recover the existing company id without an extra `GET` lookup.
             Omitted when the duplicate belongs to a different partner.
           example: "co_1nj12iei3"
+
+    RegisterMerchantRequest:
+      type: object
+      required:
+        - vat_number
+        - merchant_name
+        - merchant_address
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's Italian VAT number, with or without the `IT` prefix. Validated with the Agenzia delle Entrate control-digit algorithm.
+          example: "IT01234567890"
+        merchant_name:
+          type: string
+          description: The merchant's registered business name
+          example: "Bar Roma S.R.L."
+        merchant_address:
+          $ref: "#/components/schemas/MerchantAddressRequest"
+        sdi:
+          type: string
+          description: The merchant's SDI recipient code, when known
+          example: "KRRH6B9"
+        pec:
+          type: string
+          description: The merchant's PEC address, when known
+          example: "barroma@pec.example.com"
+        email:
+          type: string
+          description: The merchant's contact email, when known
+          example: "info@barroma.example.com"
+        phone:
+          type: string
+          description: The merchant's contact phone number, when known
+          example: "+390612345678"
+
+    MerchantAddressRequest:
+      type: object
+      required:
+        - address
+        - postal_code
+        - city
+        - country
+      properties:
+        address:
+          type: string
+          example: "Via Roma 1"
+        postal_code:
+          type: string
+          example: "00100"
+        city:
+          type: string
+          example: "Roma"
+        province:
+          type: string
+          description: Not required for merchants registered in a foreign country
+          example: "RM"
+        country:
+          type: string
+          example: "IT"
+
+    RegisterMerchantResponse:
+      type: object
+      required:
+        - vat_number
+        - delegated_at
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's VAT number in canonical `IT`-prefixed form
+          example: "IT01234567890"
+        delegated_at:
+          type: string
+          format: date-time
+          description: When the delegation was registered
+          example: "2026-07-23T10:00:00Z"
+
+    DuplicateMerchantResponse:
+      type: object
+      required:
+        - error_code
+        - error_message
+      properties:
+        error_code:
+          type: integer
+          description: Error code
+          example: 409
+        error_message:
+          type: string
+          description: Human-readable error message
+          example: "Merchant already delegated"
+        delegated_at:
+          type: string
+          format: date-time
+          description: |
+            When the existing delegation was registered. Returned only when
+            it belongs to the requesting partner; omitted when the merchant
+            is delegated through a different channel.
+          example: "2026-07-23T10:00:00Z"
+
+    GetMerchantResponse:
+      type: object
+      required:
+        - vat_number
+        - delegated
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's VAT number in canonical `IT`-prefixed form
+          example: "IT01234567890"
+        delegated:
+          type: boolean
+          description: Whether the merchant has delegated Recivu to issue invoices on their behalf
+          example: true
+        delegated_at:
+          type: string
+          format: date-time
+          description: |
+            When the delegation was registered. Present only when the active
+            delegation was registered by the requesting partner.
+          example: "2026-07-23T10:00:00Z"
 
     InternalErrorResponse:
       type: object
