@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Fixed
+
+- The `receipt.conversion.completed` webhook now fires **only when an invoice has actually been issued** for the receipt (the merchant confirmed emission, or Recivu emitted it under delega). Previously the webhook could also fire on other negotiation outcomes that concluded the deal without an invoice (for example a confirmed delegation before emission, or the merchant providing alternative contacts), incorrectly reporting `status: completed` and a `recovered_vat` for receipts whose conversion had not happened. No payload or endpoint shape changes — only the firing condition is corrected.
+
 ## [3.2.0] - 2026-07-21
 
 ### Added
