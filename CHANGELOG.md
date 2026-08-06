@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- New **Merchants** endpoints for partners that onboard merchants delegating Recivu to issue electronic invoices on their behalf:
+  - `POST /merchant` registers a merchant's delegation (VAT number with control-digit validation, business name, address; optional `sdi`, `pec`, `email`, `phone`) and attributes it to the calling partner. Returns `201` with `vat_number` (canonical `IT`-prefixed form) and `delegated_at`. A merchant can only be delegated once: repeat attempts return `409`, including `delegated_at` only when the existing delegation belongs to the calling partner.
+  - `GET /merchant/{vat_number}` checks whether a merchant has already delegated Recivu — usable as a pre-check before registering. Always `200` for a valid VAT with `{vat_number, delegated}`; `delegated_at` is included only when the active delegation was registered by the calling partner.
+  - Test API keys register delegations in the sandbox only; no real merchant is affected.
+  - New schemas: `RegisterMerchantRequest`, `MerchantAddressRequest`, `RegisterMerchantResponse`, `DuplicateMerchantResponse`, `GetMerchantResponse`.
+
 ## [3.2.0] - 2026-07-21
 
 ### Added
