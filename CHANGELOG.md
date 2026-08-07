@@ -8,11 +8,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
+- New **Merchants** endpoints for partners that onboard merchants delegating Recivu to issue electronic invoices on their behalf:
+  - `POST /merchant` registers a merchant's delegation (VAT number with control-digit validation, business name, address; optional `sdi`, `pec`, `email`, `phone`) and attributes it to the calling partner. Returns `201` with `vat_number` (canonical `IT`-prefixed form) and `delegated_at`. A merchant can only be delegated once: repeat attempts return `409`, including `delegated_at` only when the existing delegation belongs to the calling partner.
+  - `GET /merchant/{vat_number}` checks whether a merchant has already delegated Recivu — usable as a pre-check before registering. Always `200` for a valid VAT with `{vat_number, delegated}`; `delegated_at` is included only when the active delegation was registered by the calling partner.
+  - Test API keys register delegations in the sandbox only; no real merchant is affected.
+  - New schemas: `RegisterMerchantRequest`, `MerchantAddressRequest`, `RegisterMerchantResponse`, `DuplicateMerchantResponse`, `GetMerchantResponse`.
 - New merchant-facing Invoice API for issuing an electronic invoice directly from a receipt image:
   - `POST /invoice` — submit a receipt image (base64) plus the customer's details and request issuance of an electronic invoice to SdI. Issuance is asynchronous: returns `202 Accepted` with an `invoice_id`. Supports an `Idempotency-Key` header for safe retries; returns `409` for a synchronously-detectable duplicate and `422` for a fiscal-rule violation (e.g. emission deadline exceeded).
   - `GET /invoices/{id}` — retrieve the invoice status and SdI lifecycle. The `receipt_reference` fields (`merchant_vat`, `rt_number`, `receipt_number`, `receipt_date_time`) are OCR-derived and appear here once OCR completes; a duplicate discovered after OCR surfaces as `status: duplicate`.
   - `GET /invoices/{id}/download` — download the invoice (PDF by default, `?format=xml` for the SdI XML).
-- New schemas: `IssueInvoiceRequest`, `Customer`, `Address`, `TransmissionChannel`, `Contacts`, `ReceiptReference`, `InvoiceAccepted`, `InvoiceStatus`, `DuplicateInvoiceResponse`.
+  - New schemas: `IssueInvoiceRequest`, `Customer`, `Address`, `TransmissionChannel`, `Contacts`, `ReceiptReference`, `InvoiceAccepted`, `InvoiceStatus`, `DuplicateInvoiceResponse`.
+
+## [3.2.0] - 2026-07-21
+
+### Added
+
+- `POST /employee` now supports an optional `Idempotency-Key` header (max 255 characters) for safe retries and concurrent submissions: requests carrying the same key create the employee only once. Replays return the original `employee_id` in the same `201` response, with a new optional `replayed: true` field. Callers that don't send the header see no change in behavior.
+- `CreateEmployeeResponse` now documents the `status` field ("success") that the endpoint has always returned, alongside the new optional `replayed` boolean.
+
+## [3.1.0] - 2026-07-09
+
+### Added
+
+- `POST /receipt` is now idempotent for duplicate fiscal receipts: resubmitting a receipt with the same `merchant_vat` + `rt_number` + `receipt_number` + `receipt_date_time` returns `200` with the original `receipt_id`, a new `original_receipt_id`, and `duplicate: true` — instead of creating a second receipt. No new fields are required from clients.
+- New `receipt.conversion.duplicate` webhook event, delivered at most once when a duplicate is detected, carrying the original receipt's id and merchant data. Previously a duplicate surfaced as `receipt.conversion.failed`.
+- New `duplicate` event value on `POST /sandbox/receipts/{id}/trigger` (test API key) so partners can simulate the duplicate webhook in the sandbox; it fires exactly once and ignores `count`.
+- `GET /receipts/{id}` now returns webhook-parity fields so a missed webhook can be recovered by polling: `machine_status` (`completed` | `pending` | `failed` | `duplicate` | `reverted`), `merchant_name`, `merchant_vat`, and `recovered_vat` (present only while the conversion stands). The endpoint is scoped to the partner that owns the API key.
+
+### Fixed
+
+- `GET /receipts/{id}` now determines test vs live from the **API key** instead of a `?type=Test` query parameter. A receipt submitted with a test key (stored in the sandbox) is now retrievable by polling — previously such a call returned `404` — and the endpoint returns the receipt's real status rather than a mock. The `?type=Test` query parameter is deprecated and ignored.
 
 ## [3.0.0] - 2026-07-01
 

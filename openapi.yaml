@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Recivu API
   description: API for interacting with the Recivu ecosystem
-  version: 3.1.0
+  version: 3.4.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -17,6 +17,8 @@ tags:
   - name: Companies
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
+  - name: Merchants
+    description: "Endpoints for registering and checking merchants that have delegated Recivu to issue electronic invoices on their behalf"
   - name: Reports
     description: "Endpoints for retrieving activity reports"
   - name: Invoices
@@ -92,7 +94,7 @@ paths:
             post:
               summary: Webhook notification for receipt status change
               description: |
-                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for three events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible or a duplicate, with the reason in `error`), and `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt).
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for four events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible, with the reason in `error`), `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt), and `receipt.conversion.duplicate` (the submitted receipt matched an already-converted one — carries the **original** receipt's `receipt_id`, `merchant_name`, and `merchant_vat`; delivered at most once, and replacing the `failed` event previously used for duplicates).
 
                 ### Signature verification
 
@@ -228,7 +230,20 @@ paths:
       summary: Request the status related to a conversion request
       security:
         - apiKeyAuth: []
-      description: Request an update on the status of a receipt conversion request
+      description: |
+        Poll the current status of a receipt conversion request. Returns the
+        human-readable `status`, the original `receipt_image_url`, and — at
+        parity with the webhook payloads — the machine-readable `machine_status`
+        plus `merchant_name`, `merchant_vat`, and (while a conversion stands)
+        `recovered_vat`, so a missed webhook can be recovered by polling.
+
+        Receipts are scoped to the partner that owns the API key; another
+        partner's receipt id returns `404`.
+
+        **Test vs live is determined by the API key** — a test key reads its
+        sandbox receipt (which stays `pending` until you drive an outcome via
+        `POST /sandbox/receipts/{id}/trigger`), a live key reads production. No
+        query parameter is required.
       operationId: requestInvoice
       parameters:
         - name: id
@@ -238,14 +253,6 @@ paths:
             type: string
           description: The receipt ID issued at request time
           example: "rcp_abc123def"
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - Test
-          description: When set to "Test", returns a mock completed response without touching the database. Any id value can be used in test mode.
       responses:
         "200":
           description: Invoice found and retrieved successfully
@@ -671,8 +678,28 @@ paths:
       summary: Add a new employee
       security:
         - apiKeyAuth: []
-      description: Add a new employee to the Recivu ecosystem
+      description: |
+        Add a new employee to the Recivu ecosystem.
+
+        Supports an optional `Idempotency-Key` header for safe retries and
+        concurrent submissions: requests carrying the same key (per API key
+        owner) create the employee only once — subsequent calls return the
+        original `employee_id` in the same `201` response, with
+        `replayed: true`. Requests without the header behave exactly as
+        before.
       operationId: createEmployee
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >
+            Idempotency key for retries. The same key returns the same 201
+            response (original employee_id, `replayed: true`) without
+            creating a new employee. Use a unique value (e.g. a UUID) per
+            logical employee creation and reuse it across retries.
+          schema:
+            type: string
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -810,6 +837,139 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
+  /merchant:
+    post:
+      tags:
+        - Merchants
+      summary: Register a merchant that has delegated Recivu
+      security:
+        - apiKeyAuth: []
+      description: |
+        Registers a merchant that has signed a delega authorizing Recivu to
+        issue electronic invoices on their behalf, attributing the delegation
+        to the calling partner. The API call itself is the assertion that the
+        delega has been collected — no document upload is required.
+
+        The registration is idempotent per merchant: once a merchant is
+        delegated, further attempts return `409` (with `delegated_at` only
+        when the existing delegation belongs to the calling partner).
+
+        Test API keys register the delegation in the sandbox only — no real
+        merchant is affected.
+      operationId: registerMerchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterMerchantRequest"
+      responses:
+        "201":
+          description: Merchant delegation registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterMerchantResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Merchant already delegated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateMerchantResponse"
+              examples:
+                alreadyDelegatedByYou:
+                  summary: Delegation already registered by the requesting partner
+                  value:
+                    error_code: 409
+                    error_message: "Merchant already delegated"
+                    delegated_at: "2026-07-23T10:00:00Z"
+                alreadyDelegatedElsewhere:
+                  summary: Merchant already delegated, not through the requesting partner
+                  value:
+                    error_code: 409
+                    error_message: "Merchant already delegated"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+  /merchant/{vat_number}:
+    get:
+      tags:
+        - Merchants
+      summary: Check whether a merchant has delegated Recivu
+      security:
+        - apiKeyAuth: []
+      description: |
+        Returns the delegation status for the merchant identified by VAT
+        number. Always `200` for a syntactically valid VAT, whether or not
+        the merchant is known to Recivu — use it to pre-check a merchant
+        before registering. `delegated_at` is included only when the active
+        delegation was registered by the calling partner.
+      operationId: getMerchant
+      parameters:
+        - name: vat_number
+          in: path
+          required: true
+          description: The merchant's Italian VAT number, with or without the `IT` prefix.
+          schema:
+            type: string
+          example: "IT01234567890"
+      responses:
+        "200":
+          description: Delegation status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetMerchantResponse"
+              examples:
+                delegatedByYou:
+                  summary: Delegated through the requesting partner
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: true
+                    delegated_at: "2026-07-23T10:00:00Z"
+                delegatedElsewhere:
+                  summary: Delegated, but not through the requesting partner
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: true
+                notDelegated:
+                  summary: Not delegated
+                  value:
+                    vat_number: "IT01234567890"
+                    delegated: false
+        "400":
+          description: Invalid VAT number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /reports/receipts:
     get:
       tags:
@@ -1321,13 +1481,15 @@ components:
             - completed
             - failed
             - reverted
-          description: Which webhook event to fire.
+            - duplicate
+          description: Which webhook event to fire. `duplicate` fires a single `receipt.conversion.duplicate` event and ignores `count` (a duplicate is always a single notification).
           example: "completed"
         count:
           type: integer
           description: |
             How many times to fire the event (1–5). Use 2 to simulate a double
-            send. Defaults to 1.
+            send. Defaults to 1. Ignored for the `duplicate` event, which always
+            fires exactly once.
           example: 1
         webhook_url:
           type: string
@@ -1495,6 +1657,14 @@ components:
           description: Status of the invoice creation
           enum: [success, error, pending]
           example: "success"
+        duplicate:
+          type: boolean
+          description: True when this receipt matched an already-submitted receipt. When true, `receipt_id` and `original_receipt_id` both reference the original canonical receipt and the resend was a safe no-op (no new receipt was created).
+          example: false
+        original_receipt_id:
+          type: string
+          description: The id of the original canonical receipt this submission duplicated. Present only when `duplicate` is true.
+          example: "rcp_abc123def"
 
     ErrorResponse:
       type: object
@@ -1534,6 +1704,126 @@ components:
             Omitted when the duplicate belongs to a different partner.
           example: "co_1nj12iei3"
 
+    RegisterMerchantRequest:
+      type: object
+      required:
+        - vat_number
+        - merchant_name
+        - merchant_address
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's Italian VAT number, with or without the `IT` prefix. Validated with the Agenzia delle Entrate control-digit algorithm.
+          example: "IT01234567890"
+        merchant_name:
+          type: string
+          description: The merchant's registered business name
+          example: "Bar Roma S.R.L."
+        merchant_address:
+          $ref: "#/components/schemas/MerchantAddressRequest"
+        sdi:
+          type: string
+          description: The merchant's SDI recipient code, when known
+          example: "KRRH6B9"
+        pec:
+          type: string
+          description: The merchant's PEC address, when known
+          example: "barroma@pec.example.com"
+        email:
+          type: string
+          description: The merchant's contact email, when known
+          example: "info@barroma.example.com"
+        phone:
+          type: string
+          description: The merchant's contact phone number, when known
+          example: "+390612345678"
+
+    MerchantAddressRequest:
+      type: object
+      required:
+        - address
+        - postal_code
+        - city
+        - country
+      properties:
+        address:
+          type: string
+          example: "Via Roma 1"
+        postal_code:
+          type: string
+          example: "00100"
+        city:
+          type: string
+          example: "Roma"
+        province:
+          type: string
+          description: Not required for merchants registered in a foreign country
+          example: "RM"
+        country:
+          type: string
+          example: "IT"
+
+    RegisterMerchantResponse:
+      type: object
+      required:
+        - vat_number
+        - delegated_at
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's VAT number in canonical `IT`-prefixed form
+          example: "IT01234567890"
+        delegated_at:
+          type: string
+          format: date-time
+          description: When the delegation was registered
+          example: "2026-07-23T10:00:00Z"
+
+    DuplicateMerchantResponse:
+      type: object
+      required:
+        - error_code
+        - error_message
+      properties:
+        error_code:
+          type: integer
+          description: Error code
+          example: 409
+        error_message:
+          type: string
+          description: Human-readable error message
+          example: "Merchant already delegated"
+        delegated_at:
+          type: string
+          format: date-time
+          description: |
+            When the existing delegation was registered. Returned only when
+            it belongs to the requesting partner; omitted when the merchant
+            is delegated through a different channel.
+          example: "2026-07-23T10:00:00Z"
+
+    GetMerchantResponse:
+      type: object
+      required:
+        - vat_number
+        - delegated
+      properties:
+        vat_number:
+          type: string
+          description: The merchant's VAT number in canonical `IT`-prefixed form
+          example: "IT01234567890"
+        delegated:
+          type: boolean
+          description: Whether the merchant has delegated Recivu to issue invoices on their behalf
+          example: true
+        delegated_at:
+          type: string
+          format: date-time
+          description: |
+            When the delegation was registered. Present only when the active
+            delegation was registered by the requesting partner.
+          example: "2026-07-23T10:00:00Z"
+
     InternalErrorResponse:
       type: object
       required:
@@ -1549,12 +1839,29 @@ components:
           description: Human-readable error message
           example: "Internal server error"
 
+    ReceiptMachineStatus:
+      type: string
+      description: |
+        Machine-readable conversion outcome, matching the webhook event
+        vocabulary. `pending` covers everything still in the
+        validation/OCR/revision pipeline (a freshly submitted receipt, and any
+        receipt submitted with a test key until you drive an outcome in the
+        sandbox).
+      enum:
+        - completed
+        - pending
+        - failed
+        - duplicate
+        - reverted
+      example: "completed"
+
     GetInvoiceStatusResponse:
       type: object
       required:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
@@ -1568,6 +1875,21 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        recovered_vat:
+          type: number
+          format: float
+          description: VAT (IVA) recovered from the receipt, in EUR. Present only while the conversion stands (omitted once `reverted`).
+          example: 4.62
+        merchant_name:
+          type: string
+          description: Ragione sociale of the merchant. Present at webhook parity.
+          example: "Supermarket ABC S.r.l."
+        merchant_vat:
+          type: string
+          description: P.IVA (VAT number) of the merchant. Present at webhook parity.
+          example: "IT98765432109"
 
     GetInvoiceStatusPendingResponse:
       type: object
@@ -1575,6 +1897,7 @@ components:
         - status
         - error
         - receipt_image_url
+        - machine_status
       properties:
         status:
           type: string
@@ -1588,6 +1911,16 @@ components:
           type: string
           description: URL of the original receipt image uploaded with `POST /receipt`. Empty string when no image was uploaded.
           example: "https://s3.recivu.it/receipts/2f7a1b9c-3d4e-4f5a-9b0c-1234567890ab/receipt.jpg"
+        machine_status:
+          $ref: "#/components/schemas/ReceiptMachineStatus"
+        merchant_name:
+          type: string
+          description: Ragione sociale of the merchant. Present at webhook parity once known.
+          example: "Supermarket ABC S.r.l."
+        merchant_vat:
+          type: string
+          description: P.IVA (VAT number) of the merchant. Present at webhook parity once known.
+          example: "IT98765432109"
 
     TxType:
       type: string
@@ -1755,6 +2088,18 @@ components:
           type: string
           description: Unique employee identifier
           example: "emp_abc123def"
+        status:
+          type: string
+          description: Always "success" on a 201 response
+          example: "success"
+        replayed:
+          type: boolean
+          description: >
+            Present and true only when the request carried an
+            Idempotency-Key already used by a previous successful creation:
+            employee_id is the original employee's id and no new employee
+            was created. Absent on a fresh creation.
+          example: true
 
     EmployeeSummary:
       type: object
@@ -2146,11 +2491,16 @@ components:
       properties:
         event:
           type: string
-          description: The type of event that triggered the webhook
+          description: |
+            The type of event that triggered the webhook. `receipt.conversion.duplicate`
+            is delivered at most once when a resubmission matched an already-converted
+            receipt; its `receipt_id`, `merchant_name`, and `merchant_vat` reference the
+            **original** receipt.
           enum:
             - receipt.conversion.completed
             - receipt.conversion.failed
             - receipt.conversion.reverted
+            - receipt.conversion.duplicate
           example: "receipt.conversion.completed"
         receipt_id:
           type: string
@@ -2162,6 +2512,7 @@ components:
           enum:
             - completed
             - failed
+            - duplicate
           example: "completed"
         error:
           type: string
@@ -2179,11 +2530,11 @@ components:
           example: "2024-08-22T15:45:00Z"
         merchant_name:
           type: string
-          description: Ragione sociale of the merchant that issued the invoice. Present on `receipt.conversion.completed` events.
+          description: Ragione sociale of the merchant that issued the invoice. Present on `receipt.conversion.completed` and `receipt.conversion.duplicate` events.
           example: "Supermarket ABC S.r.l."
         merchant_vat:
           type: string
-          description: P.IVA (VAT number) of the merchant. Present on `receipt.conversion.completed` events.
+          description: P.IVA (VAT number) of the merchant. Present on `receipt.conversion.completed` and `receipt.conversion.duplicate` events.
           example: "IT98765432109"
         schema_version:
           type: string
