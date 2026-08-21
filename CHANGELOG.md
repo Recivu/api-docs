@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   - Test API keys register delegations in the sandbox only; no real merchant is affected.
   - New schemas: `RegisterMerchantRequest`, `MerchantAddressRequest`, `RegisterMerchantResponse`, `DuplicateMerchantResponse`, `GetMerchantResponse`.
 
+### Changed
+
+- `merchant_name` now carries the merchant's **registered business name from the Italian Chamber of Commerce registry** (ragione sociale) instead of the name read off the receipt, as soon as the merchant's VAT number is matched against the registry. Affects the `receipt.conversion.*` webhook payloads and `GET /receipts/{id}`.
+
+  This is not a schema change — the field is still an optional string, and it is what these fields were already documented to return ("Ragione sociale of the merchant"). In practice a receipt prints the short trading name ("AUTOSTRADE"), so partners previously received that instead of the legal name ("AUTOSTRADE PER L'ITALIA S.P.A."). Receipts whose merchant could not be identified in the registry are unaffected and keep the name as read.
+
 ## [3.2.0] - 2026-07-21
 
 ### Added
