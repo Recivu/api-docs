@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
+- **Per-API-key rate limiting.** Requests are now metered with a token bucket per API key: up to **20 requests** of burst, refilling at **10 requests per second**. Test and live keys are metered separately. Requests over the limit are rejected with `429 Too Many Requests` **before being processed** — nothing is created, charged, or delivered — so a `429` is always safe to retry.
+  - Every metered response carries `RateLimit-Limit` (bucket capacity), `RateLimit-Remaining` (requests still available) and `RateLimit-Reset` (seconds until the bucket is full again), so you can pace yourself before being refused.
+  - A `429` additionally carries `Retry-After` with the whole number of seconds to wait; the body is the usual `{error_code, error_message}` shape. Retry no earlier than that, ideally with exponential backoff and jitter.
+  - `429` is documented on every endpoint. Integrations that already treat any non-2xx as retryable need no change; integrations that stopped only on 4xx should special-case `429` as retryable.
+  - If your integration has a legitimate peak above these values (a month-end bulk import, for instance), contact us and we will raise the limit for your key.
+
 - New **Merchants** endpoints for partners that onboard merchants delegating Recivu to issue electronic invoices on their behalf:
   - `POST /merchant` registers a merchant's delegation (VAT number with control-digit validation, business name, address; optional `sdi`, `pec`, `email`, `phone`) and attributes it to the calling partner. Returns `201` with `vat_number` (canonical `IT`-prefixed form) and `delegated_at`. A merchant can only be delegated once: repeat attempts return `409`, including `delegated_at` only when the existing delegation belongs to the calling partner.
   - `GET /merchant/{vat_number}` checks whether a merchant has already delegated Recivu — usable as a pre-check before registering. Always `200` for a valid VAT with `{vat_number, delegated}`; `delegated_at` is included only when the active delegation was registered by the calling partner.
