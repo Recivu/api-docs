@@ -14,6 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   - Test API keys register delegations in the sandbox only; no real merchant is affected.
   - New schemas: `RegisterMerchantRequest`, `MerchantAddressRequest`, `RegisterMerchantResponse`, `DuplicateMerchantResponse`, `GetMerchantResponse`.
 
+### Fixed
+
+- **`GET /invoices_download/{id}` now returns the invoice PDF.** It only ever served the mock file for `?type=Test`; a live request answered `404 Invoice not found` even when the invoice had been issued, because the real download was never implemented. A live key now receives the PDF of the invoice issued for that receipt, as `application/pdf` with a `Content-Disposition: attachment` filename.
+  - The `404` is still there for the two cases that deserve it, told apart by `error_message`: `Receipt not found` (no such receipt for the calling partner, as on `GET /receipts/{id}`) and `No invoice file is associated with this receipt` (the receipt is yours but carries no invoice PDF — typically not converted yet).
+  - Test keys are unaffected: they still receive the mock PDF for any id, and `?type=Test` still does the same on a live key.
+
 ### Changed
 
 - `merchant_name` now carries the merchant's **registered business name from the Italian Chamber of Commerce registry** (ragione sociale) instead of the name read off the receipt, as soon as the merchant's VAT number is matched against the registry. Affects the `receipt.conversion.*` webhook payloads and `GET /receipts/{id}`.
