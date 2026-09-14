@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Changed
 
+- **`receipt.conversion.failed` now fires for every outcome that ends a conversion without an invoice**, not only for a staff archive: the negotiation with the merchant was unsuccessful, the receipt is past the 12-day deadline for issuing an electronic invoice, the merchant is excluded from conversion, or the document is not a fiscal receipt (POS slip, an invoice already). Previously a receipt closed in one of these states stayed silent and looked "in progress" forever to a partner relying on the callback. The event is delivered at most once per receipt; `error` carries the reason in plain English (see the `WebhookPayload` schema for the wordings) and is meant to be displayed, not matched on.
+
+  Not a schema change. Partners that were already handling `receipt.conversion.failed` need no code change; partners that ignored it should now treat it as the terminal negative outcome for a `receipt_id`. Receipts closed before this change that never received a callback are being notified once, retroactively, with the same event.
+
 - `merchant_name` now carries the merchant's **registered business name from the Italian Chamber of Commerce registry** (ragione sociale) instead of the name read off the receipt, as soon as the merchant's VAT number is matched against the registry. Affects the `receipt.conversion.*` webhook payloads and `GET /receipts/{id}`.
 
   This is not a schema change — the field is still an optional string, and it is what these fields were already documented to return ("Ragione sociale of the merchant"). In practice a receipt prints the short trading name ("AUTOSTRADE"), so partners previously received that instead of the legal name ("AUTOSTRADE PER L'ITALIA S.P.A."). Receipts whose merchant could not be identified in the registry are unaffected and keep the name as read.

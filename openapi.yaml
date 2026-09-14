@@ -92,7 +92,7 @@ paths:
             post:
               summary: Webhook notification for receipt status change
               description: |
-                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for four events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (conversion could not complete — fired when a receipt is archived, e.g. it was illegible, with the reason in `error`), `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt), and `receipt.conversion.duplicate` (the submitted receipt matched an already-converted one — carries the **original** receipt's `receipt_id`, `merchant_name`, and `merchant_vat`; delivered at most once, and replacing the `failed` event previously used for duplicates).
+                Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for four events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (the conversion cannot complete and no invoice will be issued — fired when the receipt is archived, e.g. it was illegible or is not a fiscal receipt, when the negotiation with the merchant is unsuccessful, when the receipt is past the 12-day deadline for issuing an electronic invoice, or when the merchant is excluded from conversion; the reason is in `error`; delivered at most once per receipt), `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt), and `receipt.conversion.duplicate` (the submitted receipt matched an already-converted one — carries the **original** receipt's `receipt_id`, `merchant_name`, and `merchant_vat`; delivered at most once, and replacing the `failed` event previously used for duplicates).
 
                 ### Signature verification
 
@@ -141,12 +141,12 @@ paths:
                           merchant_name: "Supermarket ABC S.r.l."
                           merchant_vat: "IT98765432109"
                       conversionFailed:
-                        summary: Conversion failed
+                        summary: Conversion failed (negotiation lost)
                         value:
                           event: "receipt.conversion.failed"
                           receipt_id: "rcp_abc123def"
                           status: "failed"
-                          error: "Unable to extract invoice data from receipt"
+                          error: "Negotiation with the merchant was unsuccessful: no invoice will be issued for this receipt"
                           recovered_vat: 0
                           timestamp: "2024-08-22T15:45:00Z"
                       conversionReverted:
@@ -2236,7 +2236,13 @@ components:
           example: "completed"
         error:
           type: string
-          description: Error description if the conversion failed, empty otherwise
+          description: |
+            Why the conversion failed, empty on every other event. Free text in English, for example
+            "Negotiation with the merchant was unsuccessful: no invoice will be issued for this receipt",
+            "The receipt is past the 12-day deadline for issuing an electronic invoice",
+            "The merchant is excluded from invoice conversion",
+            "The document is a POS payment slip, not a fiscal receipt: it cannot be converted into an invoice",
+            or the reason staff gave when archiving the receipt. Treat it as a message to display, not a code to match on.
           example: ""
         recovered_vat:
           type: number
