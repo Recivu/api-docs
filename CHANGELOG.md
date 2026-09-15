@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-09-15
+
 ### Added
 
 - New **Merchants** endpoints for partners that onboard merchants delegating Recivu to issue electronic invoices on their behalf:
@@ -29,6 +31,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - `merchant_name` now carries the merchant's **registered business name from the Italian Chamber of Commerce registry** (ragione sociale) instead of the name read off the receipt, as soon as the merchant's VAT number is matched against the registry. Affects the `receipt.conversion.*` webhook payloads and `GET /receipts/{id}`.
 
   This is not a schema change — the field is still an optional string, and it is what these fields were already documented to return ("Ragione sociale of the merchant"). In practice a receipt prints the short trading name ("AUTOSTRADE"), so partners previously received that instead of the legal name ("AUTOSTRADE PER L'ITALIA S.P.A."). Receipts whose merchant could not be identified in the registry are unaffected and keep the name as read.
+
+- Documentation only, no behavior change:
+  - The deprecated `type` field on `POST /receipt` now states its deprecation date (2.5.0, 2026-06-30) and that it is still accepted and ignored, replacing the stale "30-day window" wording. It will be removed in `4.0.0`, with the usual notice.
+  - The webhook callback on `POST /receipt` now documents the delivery policy: any status below `400` acknowledges the event; `5XX`, `429`, transport errors and timeouts are retried up to 4 attempts with exponential backoff; other `4XX` are not retried.
+  - The `Employees` tag has a description, and the `POST /receipt` request/response examples are wired to the operation (they were defined but never referenced).
+  - Known and deliberately unchanged: `POST /receipt` (singular) vs `GET /receipts/{id}` (plural), and the snake_case `GET /invoices_download/{id}`. Renaming an endpoint is a breaking change and would only happen in a `MAJOR` version with notice.
 
 ## [3.2.0] - 2026-07-21
 

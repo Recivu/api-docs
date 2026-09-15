@@ -17,6 +17,7 @@ tags:
   - name: Companies
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
+    description: "Endpoints for managing the employees of a registered company, who submit receipts on its behalf"
   - name: Merchants
     description: "Endpoints for registering and checking merchants that have delegated Recivu to issue electronic invoices on their behalf"
   - name: Reports
@@ -35,7 +36,7 @@ paths:
 
         ### Sandbox (test) mode
 
-        The environment is derived from your API key: a **test** key routes the request to the isolated sandbox (it is not persisted to production and no real conversion runs), a **live** key to production. The deprecated `type` body field is still accepted during the migration window but is ignored for environment-scoped keys.
+        The environment is derived from your API key: a **test** key routes the request to the isolated sandbox (it is not persisted to production and no real conversion runs), a **live** key to production. The deprecated `type` body field is still accepted but ignored: the API key alone decides the environment.
 
         With a test key the receipt is persisted to the isolated sandbox but **no webhook is fired on submission**. You drive the webhook(s) yourself from the partner portal (or directly via `POST /sandbox/receipts/{id}/trigger`), which delivers the signed callback to the company's configured `webhook_url` — exactly like a live callback — so you can exercise your integration end-to-end without touching production data. Choose the simulated outcome (`completed`, `failed`, `reverted`) per trigger. Sandbox `receipt.conversion.completed` callbacks always carry mock `merchant_name`, `merchant_vat`, and `recovered_vat` values — echoing the sandbox receipt's stored fields where available, otherwise hardcoded placeholders.
       operationId: createInvoice
@@ -45,6 +46,9 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateInvoiceRequest"
+            examples:
+              default:
+                $ref: "#/components/examples/CreateInvoiceRequestExample"
       responses:
         "200":
           description: Invoice created successfully
@@ -52,12 +56,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CreateInvoiceResponse"
+              examples:
+                success:
+                  $ref: "#/components/examples/CreateInvoiceResponseSuccessExample"
         "400":
           description: Bad request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                error:
+                  $ref: "#/components/examples/CreateInvoiceResponseErrorExample"
         "404":
           description: Employee or company not found
           content:
@@ -91,6 +101,9 @@ paths:
           '{$request.body#/webhook_url}':
             post:
               summary: Webhook notification for receipt status change
+              # Outbound call to the partner: authenticated by the
+              # x-recivu-signature header, not by an API key.
+              security: []
               description: |
                 Sent to the company's registered webhook URL when the status of a receipt conversion request changes. Fired for four events: `receipt.conversion.completed` (invoice issued — carries `recovered_vat`, `merchant_name`, and `merchant_vat`), `receipt.conversion.failed` (the conversion cannot complete and no invoice will be issued — fired when the receipt is archived, e.g. it was illegible or is not a fiscal receipt, when the negotiation with the merchant is unsuccessful, when the receipt is past the 12-day deadline for issuing an electronic invoice, or when the merchant is excluded from conversion; the reason is in `error`; delivered at most once per receipt), `receipt.conversion.reverted` (credit note issued after partner rejection of a delivered receipt), and `receipt.conversion.duplicate` (the submitted receipt matched an already-converted one — carries the **original** receipt's `receipt_id`, `merchant_name`, and `merchant_vat`; delivered at most once, and replacing the `failed` event previously used for duplicates).
 
@@ -159,8 +172,18 @@ paths:
                           recovered_vat: 0
                           timestamp: "2024-08-22T16:10:00Z"
               responses:
-                "200":
-                  description: Webhook received successfully
+                "2XX":
+                  description: Webhook received. Any status below `400` acknowledges the delivery; the body is ignored.
+                "4XX":
+                  description: |
+                    Rejected. The delivery is **not** retried (the outcome would
+                    not change), except for `429`, which is treated like a `5XX`.
+                "5XX":
+                  description: |
+                    Temporary failure. The delivery is retried up to **4 attempts
+                    in total** with exponential backoff (1s, 2s, 4s, capped at 8s,
+                    with jitter). Transport errors and timeouts (10s) follow the
+                    same policy.
   /sandbox/receipts/{id}/trigger:
     post:
       tags:
@@ -1159,12 +1182,13 @@ components:
             - $ref: "#/components/schemas/TxType"
           deprecated: true
           description: |
-            **Deprecated.** The environment (Test vs Live) is now derived from
-            your API key: a **test** key routes the request to the sandbox, a
-            **live** key to production. For an environment-scoped key this field
-            is ignored; it is accepted only for backward compatibility during a
-            30-day deprecation window and will be removed in a future `MAJOR`
-            version. New integrations should not send it.
+            **Deprecated since 2.5.0 (2026-06-30).** The environment (Test vs
+            Live) is derived from your API key: a **test** key routes the request
+            to the sandbox, a **live** key to production. The field is still
+            accepted and silently ignored, so sending it does not break your
+            integration, but it has no effect. It will be removed in the next
+            `MAJOR` version (`4.0.0`), announced with the usual 30-day notice.
+            New integrations must not send it.
         employee_id:
           type: string
           description: Shared ID of the employee associated with the receipt

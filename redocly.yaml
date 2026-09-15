@@ -1,0 +1,24 @@
+# Configurazione di `redocly lint` per openapi.yaml (TECH-893).
+#
+# La spec e' il contratto con i partner e si pubblica a ogni push su main:
+# prima di questo file una spec malformata andava online senza che nessuno se
+# ne accorgesse. Il ruleset `recommended` copre la validita' strutturale
+# (riferimenti rotti, schemi incoerenti, operazioni senza risposte); qui si
+# alzano a `error` le regole che hanno gia' trovato problemi veri e si spegne
+# l'unica che non ha senso per un'API proprietaria.
+extends:
+  - recommended
+
+rules:
+  # Non e' un'API open source: il campo `license` non avrebbe un valore onesto.
+  info-license: off
+  # Un componente mai referenziato e' documentazione morta che nessuno rilegge:
+  # e' cosi' che l'esempio con `employee_name`/`company_vat` e' rimasto
+  # sbagliato per mesi (TECH-892, punto 2).
+  no-unused-components: error
+  # Ogni tag compare come sezione nella pagina pubblica: senza descrizione la
+  # sezione e' vuota (TECH-892, punto 7).
+  tag-description: error
+  # Ogni operazione deve dichiarare come si autentica; il callback verso il
+  # partner dichiara esplicitamente `security: []`.
+  security-defined: error
