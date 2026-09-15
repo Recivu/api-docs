@@ -1,0 +1,40 @@
+# Primo workflow di api-docs (TECH-893). Il repo pubblica su docs.recivu.it a
+# ogni push su main tramite GitHub Pages "deploy from branch": non c'e' una
+# build da bloccare, quindi il check e' bloccante solo sulla PR. Perche' lo sia
+# davvero, `validate-spec` va messo fra i required check della branch
+# protection di main. Sul push resta come segnale: se e' rosso, e' gia' online.
+name: validate-spec
+
+on:
+  pull_request:
+    paths:
+      - openapi.yaml
+      - CHANGELOG.md
+      - redocly.yaml
+      - scripts/ci/**
+      - .github/workflows/validate-spec.yml
+  push:
+    branches: [main]
+    paths:
+      - openapi.yaml
+      - CHANGELOG.md
+
+permissions:
+  contents: read
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Lint openapi.yaml (Redocly)
+        run: npx -y @redocly/cli@1 lint openapi.yaml --format=github-actions
+
+      - name: Versione spec = ultima release del changelog
+        run: scripts/ci/check-version-sync.sh openapi.yaml CHANGELOG.md
