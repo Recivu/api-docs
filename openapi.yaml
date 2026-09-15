@@ -1,7 +1,35 @@
 openapi: 3.0.3
 info:
   title: Recivu API
-  description: API for interacting with the Recivu ecosystem
+  description: |
+    API for interacting with the Recivu ecosystem.
+
+    ## Rate limiting
+
+    Requests are metered **per API key** with a token bucket: the bucket holds
+    at most **20 requests** (the burst) and refills at **10 requests per
+    second**. A key that stays at or below 10 req/s is never throttled; a burst
+    of up to 20 back-to-back requests is absorbed, after which the key is
+    limited to the refill rate. Your test and live keys are metered separately.
+
+    Every metered response carries the current state of your bucket:
+
+    | Header | Meaning |
+    | --- | --- |
+    | `RateLimit-Limit` | Bucket capacity — the requests available in a full window (`20`) |
+    | `RateLimit-Remaining` | Requests you can still make right now |
+    | `RateLimit-Reset` | Seconds until the bucket is back at full capacity |
+
+    Over the limit, the request is rejected with `429 Too Many Requests`
+    **without being processed** — nothing is created, charged, or delivered —
+    and the response adds a `Retry-After` header with the whole number of
+    seconds to wait. Retry no earlier than that, ideally with exponential
+    backoff and jitter. A `429` is safe to retry: the refused request had no
+    effect.
+
+    If your integration has a legitimate peak above these values (a
+    month-end bulk import, for instance), contact us and we will raise the
+    limit for your key rather than have you spread the load artificially.
   version: 3.3.0
   contact:
     name: Recivu
@@ -90,6 +118,8 @@ paths:
                   value:
                     error_code: 404
                     error_message: "Employee is not registered for this company"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -244,6 +274,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /receipts/{id}:
     get:
       tags:
@@ -294,6 +326,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /invoices_download/{id}:
     get:
       tags:
@@ -370,6 +404,8 @@ paths:
                     error_code: 404
                     error_message: "No invoice file is associated with this receipt"
 
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
   /receipts/{id}/approve:
     post:
       tags:
@@ -417,6 +453,8 @@ paths:
                   value:
                     error_code: 409
                     error_message: "Receipt has already been rejected"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -472,6 +510,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -525,6 +565,8 @@ paths:
                   value:
                     error_code: 409
                     error_message: "Company with this VAT number already exists"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -567,6 +609,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -624,6 +668,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -665,6 +711,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -722,6 +770,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -776,6 +826,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -846,6 +898,8 @@ paths:
                   value:
                     error_code: 404
                     error_message: "Target company not found"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -887,6 +941,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -957,6 +1013,8 @@ paths:
                   value:
                     error_code: 409
                     error_message: "Merchant already delegated"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -1021,6 +1079,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -1083,6 +1143,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -1146,6 +1208,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           description: Internal server error
           content:
@@ -1159,6 +1223,41 @@ components:
       type: apiKey
       in: header
       name: x-api-key
+  responses:
+    TooManyRequests:
+      description: |
+        Rate limit exceeded for this API key. The request was rejected before
+        being processed, so it had no effect and is safe to retry after
+        `Retry-After` seconds. See **Rate limiting** in the introduction.
+      headers:
+        Retry-After:
+          description: Whole seconds to wait before retrying.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        RateLimit-Limit:
+          description: Bucket capacity — the requests available in a full window.
+          schema:
+            type: integer
+            example: 20
+        RateLimit-Remaining:
+          description: Requests still available right now (`0` on a 429).
+          schema:
+            type: integer
+            example: 0
+        RateLimit-Reset:
+          description: Seconds until the bucket is back at full capacity.
+          schema:
+            type: integer
+            example: 2
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error_code: 429
+            error_message: "Rate limit exceeded"
   schemas:
     CreateInvoiceRequest:
       type: object
