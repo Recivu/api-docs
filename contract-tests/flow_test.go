@@ -101,7 +101,7 @@ func TestContract(t *testing.T) {
 	t.Run("PUT /employee/{id}", func(t *testing.T) {
 		// company_id is optional on update and deliberately omitted: with a
 		// test key, passing the employee's own sandbox company answers
-		// 404 "Target company not found" (reported, tracked separately).
+		// 404 "Target company not found" (TECH-1077); restore it once fixed.
 		expect(t, c.call(t, http.MethodPut, "/employee/"+employeeID, map[string]any{
 			"first_name": "Contract",
 			"last_name":  "Test " + run + " (updated)",
