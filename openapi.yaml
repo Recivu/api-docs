@@ -68,6 +68,8 @@ paths:
               examples:
                 error:
                   $ref: "#/components/examples/CreateInvoiceResponseErrorExample"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: Employee or company not found
           content:
@@ -238,6 +240,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "403":
           description: Sandbox endpoints require a test API key
           content:
@@ -287,6 +291,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetInvoiceStatusPendingResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: Invoice not found
           content:
@@ -394,6 +400,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReceiptApprovalResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: Receipt not found
           content:
@@ -460,6 +468,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
           description: Receipt not found
           content:
@@ -507,6 +517,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "409":
           description: Company with this VAT number already exists
           content:
@@ -776,6 +788,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "500":
           description: Internal server error
           content:
@@ -1154,6 +1168,16 @@ paths:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
 components:
+  responses:
+    Unauthorized:
+      description: Missing or unknown `x-api-key`. Every operation is behind the same API-key check, so every operation can answer this.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error_code: 401
+            error_message: "Unauthorized: missing API key"
   securitySchemes:
     apiKeyAuth:
       type: apiKey
@@ -1745,7 +1769,9 @@ components:
 
     CompanyTransmissionChannelRequest:
       type: object
-      oneOf:
+      # anyOf, not oneOf: sending both is accepted, and GET /company/{id}
+      # always returns both keys (the unused one as an empty string).
+      anyOf:
         - required: [sdi_code]
         - required: [pec_address]
       properties:
@@ -1757,7 +1783,7 @@ components:
           type: string
           description: Company's legal mail
           example: "postmaster@pec.recivu.com"
-      description: "One of the two options is required"
+      description: "At least one of the two is required; both may be provided"
 
     CompanyContactsRequest:
       type: object
@@ -1917,6 +1943,11 @@ components:
           description: Active employees belonging to this company
           items:
             $ref: "#/components/schemas/EmployeeSummary"
+        status:
+          type: string
+          description: Lifecycle state of the company. `active` is the default; `inactive` is a company registered but not yet activated. Deleted companies are not returned (`404`).
+          enum: [active, inactive]
+          example: "active"
 
     DeleteCompanyResponse:
       type: object
