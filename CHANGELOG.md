@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Fixed
+
+- Documentation only, found by the new contract test against staging — no behavior change:
+  - Every operation now documents the `401` it can return (missing or unknown `x-api-key`) via a shared `Unauthorized` response; seven operations were missing it.
+  - `company_transmission_channel` is `anyOf` (`sdi_code` and/or `pec_address`) instead of `oneOf`: sending both has always been accepted, and `GET /company/{id}` always returns both keys, the unused one as an empty string — which a strict `oneOf` reader would reject.
+  - `GetCompanyResponse` documents the `status` field (`active` | `inactive`) the endpoint has always returned.
+
 ## [3.3.0] - 2026-09-15
 
 ### Added

@@ -1,0 +1,50 @@
+# Contract test verso staging (TECH-894): le risposte reali dei servizi
+# devono rispettare openapi.yaml. Gira ogni mattina nei giorni feriali, a mano,
+# e sulle PR che toccano la spec o il test.
+#
+# Sulla PR e' un segnale, non un gate: se la PR gemella del servizio non e'
+# ancora su staging il check e' rosso, ed e' esattamente l'informazione che
+# serve per non mergiare la voce prima del rilascio.
+#
+# Secret: STAGING_CONTRACT_TEST_API_KEY, chiave *test* del partner
+# "Contract tests (CI)" su staging. Vedi contract-tests/README.md.
+name: contract-tests
+
+on:
+  schedule:
+    - cron: "0 6 * * 1-5"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - openapi.yaml
+      - contract-tests/**
+      - .github/workflows/contract-tests.yml
+
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contract-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: contract-tests/go.mod
+          cache-dependency-path: contract-tests/go.sum
+
+      - name: Contract test contro staging
+        env:
+          RECIVU_API_BASE_URL: https://staging-api.recivu.it
+          RECIVU_API_KEY: ${{ secrets.STAGING_CONTRACT_TEST_API_KEY }}
+        run: |
+          if [ -z "$RECIVU_API_KEY" ]; then
+            echo "::error::secret STAGING_CONTRACT_TEST_API_KEY mancante: il test verrebbe saltato, non eseguito"
+            exit 1
+          fi
+          go test ./... -v -count=1 -timeout 8m
