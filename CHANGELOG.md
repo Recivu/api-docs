@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-09-19
+
+### Added
+
+- `POST /company` and `PUT /company/{id}` now accept an optional `fiscal_code`: the codice fiscale of the owner, for a sole proprietorship or self-employed professional (partita IVA individuale), 16 uppercase alphanumeric characters. Omit it, or leave it empty, for a società. On `PUT /company/{id}`, omitting or emptying the field leaves the previously stored value unchanged. Callers that don't send it see no change in behavior.
+- The Company object returned by `GET /company/{id}` now includes `fiscal_code`, present only when one was set.
+- New optional field on `RegisterCompanyRequest`, `UpdateCompanyRequest`, and `GetCompanyResponse`.
+
 ## [3.3.0] - 2026-09-15
 
 ### Added
