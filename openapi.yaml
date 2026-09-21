@@ -30,7 +30,7 @@ info:
     If your integration has a legitimate peak above these values (a
     month-end bulk import, for instance), contact us and we will raise the
     limit for your key rather than have you spread the load artificially.
-  version: 3.3.0
+  version: 3.4.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -1790,6 +1790,14 @@ components:
           type: string
           description: Company's legal name
           example: "Recivu S.R.L."
+        fiscal_code:
+          type: string
+          pattern: "^[A-Z0-9]{16}$"
+          description: |
+            Codice fiscale of the owner, for a sole proprietorship or self-employed
+            professional (partita IVA individuale): 16 uppercase alphanumeric
+            characters. Omit for a società, where it does not apply.
+          example: "RSSMRA80A01H501U"
         company_address:
           $ref: "#/components/schemas/CompanyAddressRequest"
         company_transmission_channel:
@@ -1996,6 +2004,14 @@ components:
           type: string
           description: Company's legal name
           example: "Recivu S.R.L."
+        fiscal_code:
+          type: string
+          pattern: "^[A-Z0-9]{16}$"
+          description: |
+            Codice fiscale of the owner, for a sole proprietorship or self-employed
+            professional (partita IVA individuale): 16 uppercase alphanumeric
+            characters. Omitted when not set.
+          example: "RSSMRA80A01H501U"
         company_address:
           $ref: "#/components/schemas/CompanyAddressRequest"
         company_transmission_channel:
@@ -2057,6 +2073,15 @@ components:
           type: string
           description: Company's legal name
           example: "Recivu S.R.L."
+        fiscal_code:
+          type: string
+          pattern: "^[A-Z0-9]{16}$"
+          description: |
+            Codice fiscale of the owner, for a sole proprietorship or self-employed
+            professional (partita IVA individuale): 16 uppercase alphanumeric
+            characters. Omit for a società, where it does not apply. Leave empty
+            or omit to keep the previously stored value unchanged.
+          example: "RSSMRA80A01H501U"
         company_address:
           $ref: "#/components/schemas/CompanyAddressRequest"
         company_transmission_channel:
