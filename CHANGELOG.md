@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- Two optional fields on `POST /receipt` that the API has always accepted but never documented, so partners had no way to know they could send them:
+  - `receipt.receipt_body.products[].product_unit_price` — the unit price printed on the receipt, before discounts. Sent together with `product_quantity`, it is what allows the per-line discount to be checked: quantity times unit price, less `product_absolute_discount` and `product_percent_discount`, must equal `product_total`. Omitted, that check is skipped, which is why receipts sent without it never reported a line-level discount problem.
+  - `receipt.receipt_body.global_discount_percent` — a discount applied to the whole receipt rather than to a single line. Product totals are reported before it; the amount actually paid is their sum reduced by this percentage.
+
+  Both are optional and default to absent: nothing changes for partners that do not send them.
+
 ## [3.4.0] - 2026-09-19
 
 ### Added
