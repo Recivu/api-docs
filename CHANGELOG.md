@@ -12,7 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   - `receipt.receipt_body.products[].product_unit_price` — the unit price printed on the receipt, before discounts. Sent together with `product_quantity`, it is what allows the per-line discount to be checked: quantity times unit price, less `product_absolute_discount` and `product_percent_discount`, must equal `product_total`. Omitted, that check is skipped, which is why receipts sent without it never reported a line-level discount problem.
   - `receipt.receipt_body.global_discount_percent` — a discount applied to the whole receipt rather than to a single line. Product totals are reported before it; the amount actually paid is their sum reduced by this percentage.
 
-  Both are optional and default to absent: nothing changes for partners that do not send them.
+- `receipt.receipt_body.global_discount_amount` — the same whole-receipt discount expressed in euro, for the receipts that print an amount rather than a percentage. Send it instead of converting: rounding a discount into a two-decimal percentage costs up to `sum(product_total) / 20000`, which stays inside the 0.01 EUR tolerance of the arithmetic checks only while that sum is under 200 EUR. Both fields may be sent, and are applied in the order a fiscal register applies them: the percentage off the subtotal, then the amount.
+
+  All three are optional and default to absent: nothing changes for partners that do not send them.
 
 ## [3.4.0] - 2026-09-19
 
