@@ -1415,6 +1415,31 @@ components:
           format: float
           description: Total VAT amount
           example: 3.41
+        global_discount_percent:
+          type: number
+          format: float
+          description: >
+            Discount applied to the whole receipt, as a percentage, when it is
+            not attributable to a single line. Product totals are reported
+            before it: the amount actually paid is the sum of the product
+            totals reduced by this percentage, then by
+            `global_discount_amount`.
+          example: 10
+          default: 0
+        global_discount_amount:
+          type: number
+          format: float
+          description: >
+            The same whole-receipt discount expressed in euro, for the receipts
+            that print an amount rather than a percentage. Send this instead of
+            converting: rounding a discount into a two-decimal percentage costs
+            up to `sum(product_total) / 20000`, which is within the 0.01 EUR
+            tolerance of the arithmetic checks only while that sum stays under
+            200 EUR. Both may be sent, and are applied in the order a fiscal
+            register applies them: the percentage off the subtotal, then this
+            amount.
+          example: 33.33
+          default: 0
 
     ProductRequest:
       type: object
@@ -1432,6 +1457,16 @@ components:
           format: float
           description: Quantity of the product
           example: 2
+        product_unit_price:
+          type: number
+          format: float
+          description: >
+            Unit price as printed on the receipt, before any discount. Sending
+            it together with `product_quantity` is what allows the per-line
+            discount to be checked: quantity times unit price, less the
+            discounts, must equal `product_total`. Omit it when the receipt
+            does not itemise a unit price; the check is then skipped.
+          example: 1.95
         product_total:
           type: number
           format: float
