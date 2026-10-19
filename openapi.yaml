@@ -30,7 +30,7 @@ info:
     If your integration has a legitimate peak above these values (a
     month-end bulk import, for instance), contact us and we will raise the
     limit for your key rather than have you spread the load artificially.
-  version: 3.4.0
+  version: 3.5.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -46,6 +46,8 @@ tags:
     description: "Endpoints for managing companies registered on Recivu"
   - name: Employees
     description: "Endpoints for managing the employees of a registered company, who submit receipts on its behalf"
+  - name: Vehicles
+    description: "Endpoints for managing the vehicles of a company and linking a vehicle to a receipt"
   - name: Merchants
     description: "Endpoints for registering and checking merchants that have delegated Recivu to issue electronic invoices on their behalf"
   - name: Reports
@@ -214,6 +216,94 @@ paths:
                     in total** with exponential backoff (1s, 2s, 4s, capped at 8s,
                     with jitter). Transport errors and timeouts (10s) follow the
                     same policy.
+    patch:
+      tags:
+        - Vehicles
+      summary: Assign, change or remove the vehicle of a receipt
+      security:
+        - apiKeyAuth: []
+      description: |
+        Links a vehicle to a receipt, replaces the linked vehicle, or removes
+        it. Send a `vehicle_id` to assign or change the vehicle, or
+        `vehicle_id: null` to remove it. The `vehicle_id` key is required:
+        omitting it returns `400`.
+
+        Rules:
+
+        - The vehicle can only be assigned, changed or removed **within 24
+          hours of the receipt's creation**. After that the call returns `409`
+          and the receipt is left unchanged.
+        - The vehicle must belong to **the same company as the receipt**,
+          otherwise the call returns `422` and the receipt is left unchanged.
+        - The receipt and the vehicle must belong to the partner that owns the
+          API key; otherwise the call returns `404`, as if they did not exist.
+
+        **Test vs live is determined by the API key**: a test key works on
+        sandbox receipts and vehicles, a live key on production ones; the two
+        never see each other's data.
+      operationId: assignReceiptVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignReceiptVehicleRequest"
+            examples:
+              assign:
+                summary: Assign or change the vehicle
+                value:
+                  receipt_id: "rcp_abc123def"
+                  vehicle_id: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
+              remove:
+                summary: Remove the vehicle
+                value:
+                  receipt_id: "rcp_abc123def"
+                  vehicle_id: null
+      responses:
+        "200":
+          description: Vehicle updated on the receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignReceiptVehicleResponse"
+        "400":
+          description: Bad request (missing `receipt_id`, missing or malformed `vehicle_id`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Receipt or vehicle not found (or it belongs to another partner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The 24-hour window from the receipt's creation has passed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: The vehicle belongs to a different company than the receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /sandbox/receipts/{id}/trigger:
     post:
       tags:
@@ -950,6 +1040,214 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalErrorResponse"
 
+  /vehicle:
+    post:
+      tags:
+        - Vehicles
+      summary: Create a vehicle
+      security:
+        - apiKeyAuth: []
+      description: |
+        Creates a vehicle for one of the partner's companies. Only `company_id`
+        and `plate` are required.
+
+        `plate` is free text: no format is checked and it is **not unique**
+        (two vehicles, of the same or of different companies, can share a
+        plate). Vehicles cannot be deleted.
+
+        A test key creates the vehicle in the sandbox, where a live key cannot
+        see it.
+      operationId: createVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVehicleRequest"
+      responses:
+        "201":
+          description: Vehicle created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          description: Bad request (missing or empty `company_id` or `plate`, negative `kilometres`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Company not found (or it belongs to another partner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+  /vehicle/{id}:
+    get:
+      tags:
+        - Vehicles
+      summary: Get a vehicle
+      security:
+        - apiKeyAuth: []
+      description: Retrieve a vehicle. A vehicle of another partner returns `404`.
+      operationId: getVehicle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The vehicle's unique ID
+          example: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
+      responses:
+        "200":
+          description: Vehicle retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Vehicle not found (or it belongs to another partner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+    patch:
+      tags:
+        - Vehicles
+      summary: Update a vehicle
+      security:
+        - apiKeyAuth: []
+      description: |
+        Partial update: only the fields present in the body change. Send
+        `description`, `model` or `kilometres` as `null` to clear them. `plate`
+        cannot be cleared: if present it must be a non-empty string. The vehicle
+        stays in its company (`company_id` cannot be changed). At least one
+        field is required.
+      operationId: updateVehicle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The vehicle's unique ID
+          example: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVehicleRequest"
+      responses:
+        "200":
+          description: Vehicle updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          description: Bad request (empty body, empty `plate`, negative `kilometres`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Vehicle not found (or it belongs to another partner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
+  /company/{id}/vehicles:
+    get:
+      tags:
+        - Vehicles
+      summary: List the vehicles of a company
+      security:
+        - apiKeyAuth: []
+      description: |
+        Returns the vehicles of a company, most recently created first. The
+        list is empty when the company has no vehicles. A company of another
+        partner returns `404`.
+      operationId: listCompanyVehicles
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The company's unique ID
+          example: "co_1nj12iei3"
+      responses:
+        "200":
+          description: Vehicles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListVehiclesResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Company not found (or it belongs to another partner)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalErrorResponse"
   /merchant:
     post:
       tags:
@@ -1523,6 +1821,149 @@ components:
           type: string
           description: Human-readable error message
           example: "Invalid VAT number format"
+
+    Vehicle:
+      type: object
+      required:
+        - id
+        - company_id
+        - description
+        - model
+        - plate
+        - kilometres
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          description: Unique vehicle identifier
+          example: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
+        company_id:
+          type: string
+          description: ID of the company the vehicle belongs to
+          example: "co_1nj12iei3"
+        description:
+          type: string
+          nullable: true
+          description: Free-text description, `null` when not set
+          example: "Furgone consegne"
+        model:
+          type: string
+          nullable: true
+          description: Vehicle model, `null` when not set
+          example: "Fiat Ducato"
+        plate:
+          type: string
+          description: Plate, free text (no format check, not unique)
+          example: "AB123CD"
+        kilometres:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Odometer reading in kilometres, `null` when not set
+          example: 45200
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-10-19T09:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-10-19T09:30:00Z"
+
+    CreateVehicleRequest:
+      type: object
+      required:
+        - company_id
+        - plate
+      properties:
+        company_id:
+          type: string
+          description: ID of one of your companies
+          example: "co_1nj12iei3"
+        plate:
+          type: string
+          description: Plate. Free text, must not be empty; no format check and not unique.
+          example: "AB123CD"
+        description:
+          type: string
+          description: Free-text description
+          example: "Furgone consegne"
+        model:
+          type: string
+          description: Vehicle model
+          example: "Fiat Ducato"
+        kilometres:
+          type: integer
+          minimum: 0
+          description: Odometer reading in kilometres
+          example: 45200
+
+    UpdateVehicleRequest:
+      type: object
+      minProperties: 1
+      description: Only the fields present change.
+      properties:
+        plate:
+          type: string
+          minLength: 1
+          description: New plate. Free text; must not be empty.
+          example: "EF456GH"
+        description:
+          type: string
+          nullable: true
+          description: New description, or `null` to clear it
+        model:
+          type: string
+          nullable: true
+          description: New model, or `null` to clear it
+        kilometres:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: New odometer reading, or `null` to clear it
+
+    ListVehiclesResponse:
+      type: object
+      required:
+        - vehicles
+      properties:
+        vehicles:
+          type: array
+          description: Vehicles of the company, most recently created first
+          items:
+            $ref: "#/components/schemas/Vehicle"
+
+    AssignReceiptVehicleRequest:
+      type: object
+      required:
+        - receipt_id
+        - vehicle_id
+      properties:
+        receipt_id:
+          type: string
+          description: The receipt to update
+          example: "rcp_abc123def"
+        vehicle_id:
+          type: string
+          nullable: true
+          description: The vehicle to link to the receipt, or `null` to remove the linked vehicle. Must belong to the receipt's company.
+          example: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
+
+    AssignReceiptVehicleResponse:
+      type: object
+      required:
+        - receipt_id
+        - vehicle_id
+      properties:
+        receipt_id:
+          type: string
+          example: "rcp_abc123def"
+        vehicle_id:
+          type: string
+          nullable: true
+          description: The vehicle now linked to the receipt, `null` when removed
+          example: "3f1c8a52-7d4e-4b6a-9c0e-2a5d8b7e1f40"
 
     DuplicateCompanyResponse:
       type: object

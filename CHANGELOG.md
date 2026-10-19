@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-19
+
+### Added
+
+- New **Vehicles** endpoints to manage the vehicles of a company and link one to a receipt. All of them are scoped to the calling partner: a company, vehicle or receipt of another partner returns `404`, and a test key works on sandbox data that a live key cannot see.
+  - `POST /vehicle` creates a vehicle (`company_id` and `plate` required; `description`, `model` and `kilometres` optional) and returns `201` with the vehicle. `plate` is free text: no format is checked and it is not unique. Vehicles cannot be deleted.
+  - `GET /vehicle/{id}` returns a vehicle.
+  - `PATCH /vehicle/{id}` updates only the fields present in the body (`plate`, `description`, `model`, `kilometres`); `plate` cannot be emptied.
+  - `GET /company/{id}/vehicles` lists the vehicles of a company, most recently created first (`{"vehicles": [...]}`, empty when none).
+- `PATCH /receipt` assigns, changes or removes (`vehicle_id: null`) the vehicle of a receipt. It is allowed only within **24 hours** of the receipt's creation (otherwise `409`) and only with a vehicle of the receipt's company (otherwise `422`); the receipt is left unchanged on any error. Callers that don't use these endpoints see no change in behavior.
+
 ## [3.4.0] - 2026-09-19
 
 ### Added
