@@ -1064,7 +1064,9 @@ paths:
 
         `plate` is free text: no format is checked and it is **not unique**
         (two vehicles, of the same or of different companies, can share a
-        plate). Vehicles cannot be deleted.
+        plate). All whitespace is removed from `plate` before it is saved
+        (`"FG 412 KR"` is stored and returned as `"FG412KR"`); a `plate`
+        that is only whitespace returns `400`. Vehicles cannot be deleted.
 
         A test key creates the vehicle in the sandbox, where a live key cannot
         see it.
@@ -1162,7 +1164,9 @@ paths:
         Partial update: only the fields present in the body change. Send
         `model` or `kilometres` as `null` to clear them. `plate` and
         `description` cannot be cleared: if present they must be non-empty
-        strings (`null` or blank returns `400`). The vehicle
+        strings (`null` or blank returns `400`). All whitespace is removed
+        from `plate` before it is saved (`" GA 905 XT "` becomes
+        `"GA905XT"`). The vehicle
         stays in its company (`company_id` cannot be changed). At least one
         field is required.
       operationId: updateVehicle
@@ -1866,8 +1870,8 @@ components:
           example: "Fiat Ducato"
         plate:
           type: string
-          description: Plate, free text (no format check, not unique)
-          example: "AB123CD"
+          description: Plate, free text (no format check, not unique). Stored without whitespace.
+          example: "FG412KR"
         kilometres:
           type: integer
           minimum: 0
@@ -1896,8 +1900,10 @@ components:
           example: "co_1nj12iei3"
         plate:
           type: string
-          description: Plate. Free text, must not be empty; no format check and not unique.
-          example: "AB123CD"
+          description: |
+            Plate. Free text, must not be empty; no format check and not unique.
+            All whitespace is removed before saving: `"FG 412 KR"` is stored as `"FG412KR"`.
+          example: "FG 412 KR"
         description:
           type: string
           minLength: 1
@@ -1921,8 +1927,10 @@ components:
         plate:
           type: string
           minLength: 1
-          description: New plate. Free text; must not be empty.
-          example: "EF456GH"
+          description: |
+            New plate. Free text; must not be empty. All whitespace is removed
+            before saving: `" GA 905 XT "` is stored as `"GA905XT"`.
+          example: "GA 905 XT"
         description:
           type: string
           minLength: 1
