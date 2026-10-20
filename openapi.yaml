@@ -1060,13 +1060,17 @@ paths:
         Creates a vehicle for one of the partner's companies. `company_id`,
         `plate` and `description` (the vehicle's name) are required; a missing,
         `null` or blank `description` returns `400`. `description` is trimmed
-        before it is saved.
+        before it is saved and can be at most **50 characters** long (counted
+        after trimming); a longer one returns `400`.
 
         `plate` is free text: no format is checked and it is **not unique**
         (two vehicles, of the same or of different companies, can share a
         plate). All whitespace is removed from `plate` before it is saved
         (`"FG 412 KR"` is stored and returned as `"FG412KR"`); a `plate`
-        that is only whitespace returns `400`. Vehicles cannot be deleted.
+        that is only whitespace returns `400`. The plate can be at most **15
+        characters** long, counted after the whitespace is removed
+        (`"FG 412 KR"` counts as 7); a longer one returns `400`. Vehicles
+        cannot be deleted.
 
         A test key creates the vehicle in the sandbox, where a live key cannot
         see it.
@@ -1085,7 +1089,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Vehicle"
         "400":
-          description: Bad request (missing or empty `company_id`, `plate` or `description`, negative `kilometres`)
+          description: Bad request (missing or empty `company_id`, `plate` or `description`, `description` over 50 characters, `plate` over 15 characters, negative `kilometres`)
           content:
             application/json:
               schema:
@@ -1166,7 +1170,9 @@ paths:
         `description` cannot be cleared: if present they must be non-empty
         strings (`null` or blank returns `400`). All whitespace is removed
         from `plate` before it is saved (`" GA 905 XT "` becomes
-        `"GA905XT"`). The vehicle
+        `"GA905XT"`). `description` can be at most 50 characters (after
+        trimming) and `plate` at most 15 (after removing the whitespace);
+        longer values return `400`. The vehicle
         stays in its company (`company_id` cannot be changed). At least one
         field is required.
       operationId: updateVehicle
@@ -1192,7 +1198,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Vehicle"
         "400":
-          description: Bad request (empty body, empty `plate` or `description`, negative `kilometres`)
+          description: Bad request (empty body, empty `plate` or `description`, `description` over 50 characters, `plate` over 15 characters, negative `kilometres`)
           content:
             application/json:
               schema:
@@ -1861,7 +1867,7 @@ components:
         description:
           type: string
           nullable: true
-          description: Name of the vehicle. Always set for vehicles created through the API; `null` only for vehicles created before it became required
+          description: Name of the vehicle, at most 50 characters. Always set for vehicles created through the API; `null` only for vehicles created before it became required
           example: "Furgone consegne"
         model:
           type: string
@@ -1870,7 +1876,7 @@ components:
           example: "Fiat Ducato"
         plate:
           type: string
-          description: Plate, free text (no format check, not unique). Stored without whitespace.
+          description: Plate, free text (no format check, not unique). Stored without whitespace, at most 15 characters.
           example: "FG412KR"
         kilometres:
           type: integer
@@ -1903,11 +1909,13 @@ components:
           description: |
             Plate. Free text, must not be empty; no format check and not unique.
             All whitespace is removed before saving: `"FG 412 KR"` is stored as `"FG412KR"`.
+            At most 15 characters, counted after the whitespace is removed.
           example: "FG 412 KR"
         description:
           type: string
           minLength: 1
-          description: Name of the vehicle. Required; must not be blank (it is trimmed before saving).
+          maxLength: 50
+          description: Name of the vehicle. Required; must not be blank (it is trimmed before saving). At most 50 characters.
           example: "Furgone consegne"
         model:
           type: string
@@ -1930,11 +1938,13 @@ components:
           description: |
             New plate. Free text; must not be empty. All whitespace is removed
             before saving: `" GA 905 XT "` is stored as `"GA905XT"`.
+            At most 15 characters, counted after the whitespace is removed.
           example: "GA 905 XT"
         description:
           type: string
           minLength: 1
-          description: New name of the vehicle. Cannot be cleared; must not be blank.
+          maxLength: 50
+          description: New name of the vehicle. Cannot be cleared; must not be blank. At most 50 characters.
           example: "Furgone consegne"
         model:
           type: string
