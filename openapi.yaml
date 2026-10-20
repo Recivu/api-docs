@@ -1057,8 +1057,10 @@ paths:
       security:
         - apiKeyAuth: []
       description: |
-        Creates a vehicle for one of the partner's companies. Only `company_id`
-        and `plate` are required.
+        Creates a vehicle for one of the partner's companies. `company_id`,
+        `plate` and `description` (the vehicle's name) are required; a missing,
+        `null` or blank `description` returns `400`. `description` is trimmed
+        before it is saved.
 
         `plate` is free text: no format is checked and it is **not unique**
         (two vehicles, of the same or of different companies, can share a
@@ -1081,7 +1083,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Vehicle"
         "400":
-          description: Bad request (missing or empty `company_id` or `plate`, negative `kilometres`)
+          description: Bad request (missing or empty `company_id`, `plate` or `description`, negative `kilometres`)
           content:
             application/json:
               schema:
@@ -1158,8 +1160,9 @@ paths:
         - apiKeyAuth: []
       description: |
         Partial update: only the fields present in the body change. Send
-        `description`, `model` or `kilometres` as `null` to clear them. `plate`
-        cannot be cleared: if present it must be a non-empty string. The vehicle
+        `model` or `kilometres` as `null` to clear them. `plate` and
+        `description` cannot be cleared: if present they must be non-empty
+        strings (`null` or blank returns `400`). The vehicle
         stays in its company (`company_id` cannot be changed). At least one
         field is required.
       operationId: updateVehicle
@@ -1185,7 +1188,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Vehicle"
         "400":
-          description: Bad request (empty body, empty `plate`, negative `kilometres`)
+          description: Bad request (empty body, empty `plate` or `description`, negative `kilometres`)
           content:
             application/json:
               schema:
@@ -1854,7 +1857,7 @@ components:
         description:
           type: string
           nullable: true
-          description: Free-text description, `null` when not set
+          description: Name of the vehicle. Always set for vehicles created through the API; `null` only for vehicles created before it became required
           example: "Furgone consegne"
         model:
           type: string
@@ -1885,6 +1888,7 @@ components:
       required:
         - company_id
         - plate
+        - description
       properties:
         company_id:
           type: string
@@ -1896,7 +1900,8 @@ components:
           example: "AB123CD"
         description:
           type: string
-          description: Free-text description
+          minLength: 1
+          description: Name of the vehicle. Required; must not be blank (it is trimmed before saving).
           example: "Furgone consegne"
         model:
           type: string
@@ -1920,8 +1925,9 @@ components:
           example: "EF456GH"
         description:
           type: string
-          nullable: true
-          description: New description, or `null` to clear it
+          minLength: 1
+          description: New name of the vehicle. Cannot be cleared; must not be blank.
+          example: "Furgone consegne"
         model:
           type: string
           nullable: true
