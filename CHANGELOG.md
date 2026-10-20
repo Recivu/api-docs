@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   - `GET /vehicle/{id}` returns a vehicle.
   - `PATCH /vehicle/{id}` updates only the fields present in the body (`plate`, `description`, `model`, `kilometres`); `plate` cannot be emptied.
   - `GET /company/{id}/vehicles` lists the vehicles of a company, most recently created first (`{"vehicles": [...]}`, empty when none).
-- `PATCH /receipt` assigns, changes or removes (`vehicle_id: null`) the vehicle of a receipt. It is allowed only within **24 hours** of the receipt's creation (otherwise `409`) and only with a vehicle of the receipt's company (otherwise `422`); the receipt is left unchanged on any error. Callers that don't use these endpoints see no change in behavior.
+- `PATCH /receipt` assigns, changes or removes (`vehicle_id: null`) the vehicle of a receipt. It is allowed only within **24 hours** of the receipt's creation (otherwise `409`), only while the receipt's invoice has **not been requested yet** and the receipt is not converted, discarded or lost (otherwise `409`, with the message `The receipt's vehicle can no longer be assigned, changed or removed: its invoice has already been requested, or the receipt is converted, discarded or lost`; the plate is needed to emit the invoice) and only with a vehicle of the receipt's company (otherwise `422`); the receipt is left unchanged on any error. Callers that don't use these endpoints see no change in behavior.
 
 ## [3.4.0] - 2026-09-19
 

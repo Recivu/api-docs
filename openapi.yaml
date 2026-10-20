@@ -233,6 +233,12 @@ paths:
         - The vehicle can only be assigned, changed or removed **within 24
           hours of the receipt's creation**. After that the call returns `409`
           and the receipt is left unchanged.
+        - The vehicle can no longer be assigned, changed or removed once the
+          receipt's **invoice has been requested**, or once the receipt is
+          **converted, discarded or lost**, even inside the 24 hours (the
+          plate is needed to emit the invoice). The call returns `409` and the
+          receipt is left unchanged. If both conditions apply, this message is
+          returned rather than the 24-hour one.
         - The vehicle must belong to **the same company as the receipt**,
           otherwise the call returns `422` and the receipt is left unchanged.
         - The receipt and the vehicle must belong to the partner that owns the
@@ -285,7 +291,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: The 24-hour window from the receipt's creation has passed
+          description: >-
+            The 24-hour window from the receipt's creation has passed, or the
+            receipt's invoice has already been requested, or the receipt is
+            converted, discarded or lost (the error message tells which)
           content:
             application/json:
               schema:
