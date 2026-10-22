@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ### Added
 
-- New **Vehicles** endpoints to manage the vehicles of a company and link one to a receipt. All of them are scoped to the calling partner: a company, vehicle or receipt of another partner returns `404`, and a test key works on sandbox data that a live key cannot see.
+- New **Vehicles** endpoints (**beta**: they may change without notice) to manage the vehicles of a company and link one to a receipt. All of them are scoped to the calling partner: a company, vehicle or receipt of another partner returns `404`, and a test key works on sandbox data that a live key cannot see.
   - `POST /vehicle` creates a vehicle (`company_id`, `plate` and `description`, the vehicle's name, required and trimmed; a missing or blank `description` returns `400`, and so does one over **50 characters** (counted after trimming); `model` and `kilometres` optional) and returns `201` with the vehicle. `plate` is free text: no format is checked and it is not unique, but all whitespace is removed before it is saved (`"FG 412 KR"` is stored and returned as `"FG412KR"`); a `plate` that is only whitespace returns `400`. `plate` can be at most **15 characters**, counted after the whitespace is removed (`"FG 412 KR"` counts as 7); a longer one returns `400`. Vehicles cannot be deleted.
   - `GET /vehicle/{id}` returns a vehicle.
   - `PATCH /vehicle/{id}` updates only the fields present in the body (`plate`, `description`, `model`, `kilometres`); `plate` and `description` cannot be emptied (`null` or blank returns `400`). Whitespace is removed from `plate` here too, and the same limits apply (`description` at most 50 characters, `plate` at most 15).

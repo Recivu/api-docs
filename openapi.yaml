@@ -47,7 +47,7 @@ tags:
   - name: Employees
     description: "Endpoints for managing the employees of a registered company, who submit receipts on its behalf"
   - name: Vehicles
-    description: "Endpoints for managing the vehicles of a company and linking a vehicle to a receipt"
+    description: "**Beta** — Endpoints for managing the vehicles of a company and linking a vehicle to a receipt. They are in beta and may change without notice."
   - name: Merchants
     description: "Endpoints for registering and checking merchants that have delegated Recivu to issue electronic invoices on their behalf"
   - name: Reports
@@ -219,10 +219,12 @@ paths:
     patch:
       tags:
         - Vehicles
-      summary: Assign, change or remove the vehicle of a receipt
+      summary: Assign, change or remove the vehicle of a receipt (Beta)
       security:
         - apiKeyAuth: []
       description: |
+        **Beta** — This endpoint is in beta and may change without notice.
+
         Links a vehicle to a receipt, replaces the linked vehicle, or removes
         it. Send a `vehicle_id` to assign or change the vehicle, or
         `vehicle_id: null` to remove it. The `vehicle_id` key is required:
@@ -1053,10 +1055,12 @@ paths:
     post:
       tags:
         - Vehicles
-      summary: Create a vehicle
+      summary: Create a vehicle (Beta)
       security:
         - apiKeyAuth: []
       description: |
+        **Beta** — This endpoint is in beta and may change without notice.
+
         Creates a vehicle for one of the partner's companies. `company_id`,
         `plate` and `description` (the vehicle's name) are required; a missing,
         `null` or blank `description` returns `400`. `description` is trimmed
@@ -1118,10 +1122,10 @@ paths:
     get:
       tags:
         - Vehicles
-      summary: Get a vehicle
+      summary: Get a vehicle (Beta)
       security:
         - apiKeyAuth: []
-      description: Retrieve a vehicle. A vehicle of another partner returns `404`.
+      description: "**Beta** — This endpoint is in beta and may change without notice.\n\nRetrieve a vehicle. A vehicle of another partner returns `404`."
       operationId: getVehicle
       parameters:
         - name: id
@@ -1161,10 +1165,12 @@ paths:
     patch:
       tags:
         - Vehicles
-      summary: Update a vehicle
+      summary: Update a vehicle (Beta)
       security:
         - apiKeyAuth: []
       description: |
+        **Beta** — This endpoint is in beta and may change without notice.
+
         Partial update: only the fields present in the body change. Send
         `model` or `kilometres` as `null` to clear them. `plate` and
         `description` cannot be cleared: if present they must be non-empty
@@ -1227,10 +1233,12 @@ paths:
     get:
       tags:
         - Vehicles
-      summary: List the vehicles of a company
+      summary: List the vehicles of a company (Beta)
       security:
         - apiKeyAuth: []
       description: |
+        **Beta** — This endpoint is in beta and may change without notice.
+
         Returns the vehicles of a company, most recently created first. The
         list is empty when the company has no vehicles. A company of another
         partner returns `404`.
