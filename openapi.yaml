@@ -30,7 +30,7 @@ info:
     If your integration has a legitimate peak above these values (a
     month-end bulk import, for instance), contact us and we will raise the
     limit for your key rather than have you spread the load artificially.
-  version: 3.4.0
+  version: 3.4.1
   contact:
     name: Recivu
     url: https://recivu.it
@@ -1502,7 +1502,7 @@ components:
           example: "success"
         duplicate:
           type: boolean
-          description: True when this receipt matched an already-submitted receipt. When true, `receipt_id` and `original_receipt_id` both reference the original canonical receipt and the resend was a safe no-op (no new receipt was created).
+          description: True when this receipt matched an already-submitted receipt. When true, `receipt_id` and `original_receipt_id` both reference the original canonical receipt and the resend was a safe no-op (no new receipt was created). A submission is a duplicate when it carries the same merchant VAT number, RT number, receipt number and date-time as an earlier one, or, when any of those is missing, when `receipt_image` is byte-for-byte the same file an earlier receipt of the same company was submitted with.
           example: false
         original_receipt_id:
           type: string
