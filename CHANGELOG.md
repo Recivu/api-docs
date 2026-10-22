@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-10-22
+
+### Fixed
+
+- Documented when `POST /receipt` answers `duplicate: true`. Besides the fiscal key (merchant VAT number, RT number, receipt number, date-time), a resend is now also recognised when the fiscal key is incomplete and `receipt_image` is the same file, byte for byte, that an earlier receipt of the same company was submitted with. The response is unchanged: `receipt_id` and `original_receipt_id` both carry the original receipt, and no new receipt is created.
+
 ## [3.4.0] - 2026-09-19
 
 ### Added
