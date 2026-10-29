@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-10-29
+
+### Changed
+
+- `PATCH /receipt` (**beta**) now assigns or changes a vehicle only on a **fuel or motorway** receipt; any other category (parking included), or a receipt without one, returns `422` with the message `A vehicle can only be assigned to fuel or motorway receipts` and leaves the receipt unchanged. This check wins over the 24-hour and invoice-requested `409`s. Removing the vehicle (`vehicle_id: null`) is still allowed whatever the category.
+
 ## [3.5.0] - 2026-10-19
 
 ### Added

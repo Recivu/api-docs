@@ -30,7 +30,7 @@ info:
     If your integration has a legitimate peak above these values (a
     month-end bulk import, for instance), contact us and we will raise the
     limit for your key rather than have you spread the load artificially.
-  version: 3.5.0
+  version: 3.6.0
   contact:
     name: Recivu
     url: https://recivu.it
@@ -243,6 +243,12 @@ paths:
           returned rather than the 24-hour one.
         - The vehicle must belong to **the same company as the receipt**,
           otherwise the call returns `422` and the receipt is left unchanged.
+        - A vehicle can only be assigned or changed on a **fuel or motorway**
+          receipt (a receipt without a category counts as not allowed);
+          otherwise the call returns `422` and the receipt is left
+          unchanged. This message is returned rather than the 24-hour or the
+          invoice-requested one. Removing the vehicle (`vehicle_id: null`) is
+          allowed whatever the category.
         - The receipt and the vehicle must belong to the partner that owns the
           API key; otherwise the call returns `404`, as if they did not exist.
 
@@ -302,7 +308,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
-          description: The vehicle belongs to a different company than the receipt
+          description: >-
+            The vehicle belongs to a different company than the receipt, or
+            the receipt is not a fuel or motorway one (the error
+            message tells which)
           content:
             application/json:
               schema:
