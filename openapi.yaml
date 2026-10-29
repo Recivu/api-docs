@@ -30,7 +30,7 @@ info:
     If your integration has a legitimate peak above these values (a
     month-end bulk import, for instance), contact us and we will raise the
     limit for your key rather than have you spread the load artificially.
-  version: 3.6.0
+  version: 3.5.0
   contact:
     name: Recivu
     url: https://recivu.it

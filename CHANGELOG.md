@@ -6,12 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
-## [3.6.0] - 2026-10-29
-
-### Changed
-
-- `PATCH /receipt` (**beta**) now assigns or changes a vehicle only on a **fuel or motorway** receipt; any other category (parking included), or a receipt without one, returns `422` with the message `A vehicle can only be assigned to fuel or motorway receipts` and leaves the receipt unchanged. This check wins over the 24-hour and invoice-requested `409`s. Removing the vehicle (`vehicle_id: null`) is still allowed whatever the category.
-
 ## [3.5.0] - 2026-10-19
 
 ### Added
@@ -21,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   - `GET /vehicle/{id}` returns a vehicle.
   - `PATCH /vehicle/{id}` updates only the fields present in the body (`plate`, `description`, `model`, `kilometres`); `plate` and `description` cannot be emptied (`null` or blank returns `400`). Whitespace is removed from `plate` here too, and the same limits apply (`description` at most 50 characters, `plate` at most 15).
   - `GET /company/{id}/vehicles` lists the vehicles of a company, most recently created first (`{"vehicles": [...]}`, empty when none).
-- `PATCH /receipt` assigns, changes or removes (`vehicle_id: null`) the vehicle of a receipt. It is allowed only within **24 hours** of the receipt's creation (otherwise `409`), only while the receipt's invoice has **not been requested yet** and the receipt is not converted, discarded or lost (otherwise `409`, with the message `The receipt's vehicle can no longer be assigned, changed or removed: its invoice has already been requested, or the receipt is converted, discarded or lost`; the plate is needed to emit the invoice) and only with a vehicle of the receipt's company (otherwise `422`); the receipt is left unchanged on any error. Callers that don't use these endpoints see no change in behavior.
+- `PATCH /receipt` assigns, changes or removes (`vehicle_id: null`) the vehicle of a receipt. It is allowed only within **24 hours** of the receipt's creation (otherwise `409`), only while the receipt's invoice has **not been requested yet** and the receipt is not converted, discarded or lost (otherwise `409`, with the message `The receipt's vehicle can no longer be assigned, changed or removed: its invoice has already been requested, or the receipt is converted, discarded or lost`; the plate is needed to emit the invoice) only with a vehicle of the receipt's company (otherwise `422`) and only on a **fuel or motorway** receipt (any other category, or a receipt without one, returns `422` with the message `A vehicle can only be assigned to fuel or motorway receipts`; this check wins over the `409`s, and removing the vehicle is allowed whatever the category); the receipt is left unchanged on any error. Callers that don't use these endpoints see no change in behavior.
 
 ## [3.4.0] - 2026-09-19
 
