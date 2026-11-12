@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** company VAT numbers are stored and returned in canonical form, `IT` followed by 11 digits. A company registered with the bare 11 digits (`07280260485`) is returned by `GET /company/{id}` and `GET /companies` as `IT07280260485`, including companies registered before this release. `POST /company` and `PUT /company/{id}` still accept the bare form and store it with the prefix, and the `vat_number` filter of `GET /companies` matches either form. Partners that compare the VAT number they sent with the one we return must compare the canonical form.
+- **BREAKING:** `POST /company` returns `409` only when the requesting partner has already registered a company with the same VAT number and `type`, compared in canonical form. A company already registered by a different partner no longer conflicts: the request now returns `201` with a new company owned by the requesting partner. `DuplicateCompanyResponse.company_id` is therefore always present.
+
 ## [3.4.0] - 2026-09-19
 
 ### Added

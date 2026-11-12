@@ -548,7 +548,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Company with this VAT number already exists
+          description: |
+            The requesting partner has already registered a company with this
+            VAT number and `type`. The VAT is compared in canonical form, so
+            `07280260485` and `IT07280260485` are the same company. A company
+            registered by a different partner does not conflict: each partner
+            registers its own.
           content:
             application/json:
               schema:
@@ -560,11 +565,6 @@ paths:
                     error_code: 409
                     error_message: "Company with this VAT number already exists"
                     company_id: "co_1nj12iei3"
-                duplicateUnownedVat:
-                  summary: VAT already registered by a different partner
-                  value:
-                    error_code: 409
-                    error_message: "Company with this VAT number already exists"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "500":
@@ -1541,10 +1541,9 @@ components:
         company_id:
           type: string
           description: |
-            Existing company id, returned only when the duplicate VAT number
-            is already registered by the requesting partner. Lets partners
-            recover the existing company id without an extra `GET` lookup.
-            Omitted when the duplicate belongs to a different partner.
+            Existing company id: the company the requesting partner already
+            registered with this VAT number. Lets partners recover the
+            existing company id without an extra `GET` lookup.
           example: "co_1nj12iei3"
 
     RegisterMerchantRequest:
@@ -1784,7 +1783,11 @@ components:
       properties:
         vat_number:
           type: string
-          description: Company's VAT number included of the international prefix. If extra-EU country put OO999999999
+          description: |
+            Company's VAT number included of the international prefix. If
+            extra-EU country put OO999999999. An Italian VAT sent as the bare
+            11 digits is stored, and returned, in canonical form: `IT` followed
+            by the 11 digits.
           example: "IT07280260485"
         company_name:
           type: string
@@ -1998,7 +2001,7 @@ components:
           example: "co_1nj12iei3"
         vat_number:
           type: string
-          description: Company's VAT number
+          description: Company's VAT number. Italian VAT numbers are always returned as `IT` followed by 11 digits.
           example: "IT07280260485"
         company_name:
           type: string
